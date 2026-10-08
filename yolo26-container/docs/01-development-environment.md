@@ -16,7 +16,7 @@ DevKit for the YOLO26 container example.
 The host and DevKit must be able to reach each other. Record the DevKit IP
 address before setup. The DevKit user must have password-free `sudo` access.
 If Docker is not already installed on the DevKit, the DevKit also needs
-Internet access while `dk container setup` installs it.
+Internet access when the first `dk container` command installs it.
 
 ## Install host prerequisites
 
@@ -107,24 +107,14 @@ If `dk` or `SIMA_CONTAINER_REGISTRY` is missing, leave the SDK shell, run
 `sima-cli neat install sdk@develop` again, enter the DevKit IP when prompted,
 and open a new SDK shell.
 
-## Prepare Docker on the DevKit
+## Docker on the DevKit
 
-The SDK installer configures the SDK side, but it does not silently install
-Docker on the DevKit. From the SDK shell, run:
+You do not need to install Docker on the DevKit separately. If Docker is not
+already installed, the first `dk container` command installs and configures it
+on the DevKit automatically.
 
-```bash
-dk container setup
-```
-
-If Docker is missing, `dk` explains the changes and asks for approval. Docker
-data is placed under `/data`, and the DevKit is configured to reach the local
-registry. For an approved noninteractive installation, use:
-
-```bash
-dk container setup --yes
-```
-
-Confirm that the container interface responds:
+Confirm that the container interface responds. Either command can trigger the
+automatic installation on a new DevKit:
 
 ```bash
 dk container images

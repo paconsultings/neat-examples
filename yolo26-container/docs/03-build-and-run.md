@@ -244,14 +244,14 @@ Inspect it if needed, then remove it before the next run:
 
 ### Docker is unavailable on the DevKit
 
-Run:
+Run a `dk container` command from the SDK shell:
 
 ```bash
-dk container setup
+dk container list
 ```
 
-Approve the installation, or use `--yes` only when the noninteractive changes
-are already approved.
+If Docker is missing, `dk container` installs and configures it on the DevKit
+automatically. Make sure the DevKit has Internet access during installation.
 
 ### The DevKit cannot download an image
 
