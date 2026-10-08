@@ -1,10 +1,20 @@
-# 3. Build and run the containers
+# 3. Build, deploy, and test
 
 Complete the [development environment setup](01-development-environment.md)
 before you use this guide.
 
-Run all commands in the paired Neat SDK shell unless a step identifies a
-different system.
+Run the commands in the paired Neat SDK shell unless a step says to run them
+on the DevKit.
+
+## Development workflow
+
+Use this sequence:
+
+1. Select thin or bundled images.
+2. Build and push ARM64 images to the local registry.
+3. Deploy one or both images to the DevKit.
+4. Wait for the applications and inspect their logs.
+5. Remove the retained containers before the next test.
 
 ## Check the environment
 
@@ -14,235 +24,228 @@ Go to the example directory:
 cd /workspace/neat-examples/yolo26-container
 ```
 
-Check the DevKit connection and the registry:
+Check the DevKit connection and local registry:
 
 ```bash
 type dk
 dk status
 test -n "${SIMA_CONTAINER_REGISTRY}"
+docker buildx version
 ```
 
-The launcher gets the DevKit project path from its location. For the standard
-workspace layout, do not set `DEVKIT_PROJECT_DIR`.
-
-## Get the YOLO26 ModelPack
-
-The first `run` action downloads this file if it is not present:
-
-```text
-models/yolo26m-det-int8-b1.tar.gz
-```
-
-The download uses sima-cli and the pinned Model Zoo 2.1.3 URL. Authenticate
-before the first run:
-
-```bash
-sima-cli login
-```
-
-You can also download the model before you run the application:
-
-```bash
-mkdir -p models
-sima-cli download \
-  --dest models \
-  https://docs.sima.ai/pkg_downloads/SDK2.1.3/models/modalix/yolo26-detection/yolo26m-det-int8-b1.tar.gz
-```
-
-sima-cli resumes an incomplete download when possible. Do not commit the model
-archive.
+All commands must succeed.
 
 ## Select an image type
 
-The default setting builds a thin image. This image uses Neat from the DevKit:
+Thin images use the Neat installation on the DevKit. Thin mode is the default:
 
 ```bash
 unset RUNTIME_MODE
 ```
 
-To include the Neat user-space runtime in the image, select bundled mode:
+Bundled images include the Neat user-space runtime from the SDK sysroot:
 
 ```bash
 export RUNTIME_MODE=bundled
 ```
 
-Do not change `RUNTIME_MODE` until you finish the test. Thin mode and bundled
-mode use different image, container, and report names.
+Keep the selected value until the test is complete. Each mode uses different
+image, container, and report names.
 
-## Use the prebuilt bundled images
+## Get the YOLO26 ModelPack
 
-GitHub Actions builds the bundled images on an ARM64 runner. Each successful
-build publishes these moving tags:
+The first `run` action downloads the ModelPack automatically when it is not
+present. The download requires a valid SiMa Developer Portal account.
 
-```text
-ghcr.io/paconsultings/neat-yolo26-python-bundled:develop
-ghcr.io/paconsultings/neat-yolo26-cpp-bundled:develop
-```
-
-It also publishes an immutable `sha-<commit>` tag for each image. Use an
-immutable tag when you need to repeat a test with the same image.
-
-To pull the images directly on the DevKit, run:
+Authenticate before the first run:
 
 ```bash
-dk shell
-docker pull ghcr.io/paconsultings/neat-yolo26-python-bundled:develop
-docker pull ghcr.io/paconsultings/neat-yolo26-cpp-bundled:develop
-exit
+sima-cli login
 ```
 
-To use the prebuilt images, run these commands in the SDK shell:
+To download the model before the test, run:
 
 ```bash
-export RUNTIME_MODE=bundled
-export PYTHON_IMAGE=ghcr.io/paconsultings/neat-yolo26-python-bundled:develop
-export CPP_IMAGE=ghcr.io/paconsultings/neat-yolo26-cpp-bundled:develop
+mkdir -p models
+sima-cli download --dest models \
+  https://docs.sima.ai/pkg_downloads/SDK2.1.3/models/modalix/yolo26-detection/yolo26m-det-int8-b1.tar.gz
 
-./run-devkit.sh run both
-./run-devkit.sh wait both
-./run-devkit.sh logs both
+test -f models/yolo26m-det-int8-b1.tar.gz
 ```
 
-The DevKit pulls the images directly from GitHub Container Registry. Public
-packages do not require a registry login. If GitHub reports `denied`, ask the
-repository owner to confirm that both packages are public.
-
-> [!IMPORTANT]
-> SiMa software distribution terms apply to the Neat files in these images.
-> A repository owner must confirm redistribution permission before making the
-> packages public.
-
-The publishing workflow runs after relevant application or container files
-change on `main`. A repository maintainer can also start it with
-`workflow_dispatch`. The workflow does these operations:
-
-1. Uses the `ubuntu-24.04-arm` GitHub-hosted runner.
-2. Installs or verifies Docker on the runner.
-3. Installs sima-cli from the `develop` branch.
-4. Installs the `develop` SDK without a DevKit connection.
-5. Installs minimal Neat Core in the SDK.
-6. Stages Neat from the SDK sysroot.
-7. Builds and publishes both images to GitHub Container Registry.
-
-The workflow does not use a DevKit or copy files over SSH.
+Do not commit the model archive.
 
 ## Build and push the images
 
-Build the Python and C++ images:
+Build both images:
 
 ```bash
 ./run-devkit.sh build both
 ```
 
-To build only one image, run one of these commands:
+To build only one language, run:
 
 ```bash
 ./run-devkit.sh build python
 ./run-devkit.sh build cpp
 ```
 
-The Python build adds `main.py` to the image. The C++ build does these
-operations:
+The build uses Buildx with `--platform linux/arm64`. It pushes the images to
+the local registry named by `SIMA_CONTAINER_REGISTRY`. The DevKit pulls the
+images from that registry during deployment.
 
-1. Reads the public Neat development files from the SDK sysroot.
-2. Cross-compiles `main.cpp`.
-3. Checks that the executable is ARM64.
+The C++ build cross-compiles `main.cpp` and checks that the executable is
+ARM64. A bundled build also copies the Neat runtime files and plug-ins from the
+SDK sysroot and extracts `pyneat` from the wheel cached by the Neat installer.
+It does not copy Neat from the DevKit.
 
-Bundled mode copies Neat runtime files and plug-ins from the SDK sysroot. It
-extracts `pyneat` from the wheel cached by the SDK installation. It does not
-copy Neat from the DevKit.
+Do not replace `--push` with `--load`. The `--load` option puts an image only
+in the Docker engine on the development host.
 
-Buildx uses `--platform linux/arm64` and `--push`. It pushes the images to
-`SIMA_CONTAINER_REGISTRY`. The DevKit then pulls the images from this
-registry.
+## Deploy and test both applications
 
-Do not replace `--push` with `--load`. The `--load` option puts the image
-only in the Docker engine on the development host.
+Start the Python and C++ containers in the background:
 
-## Understand `dk container`
+```bash
+./run-devkit.sh run both
+```
 
-Run `dk container` commands in the paired SDK shell. The commands control
-Docker on the DevKit. They do not control Docker in the SDK container.
+Check their state:
 
-On the first `dk container` command, `dk` does these operations when
-necessary:
+```bash
+./run-devkit.sh status both
+```
 
-1. Installs Docker on the DevKit.
-2. Moves Docker data storage to `/data`.
-3. Configures the DevKit to use the local development registry.
+Wait for both containers and verify that their execution times overlap:
 
-The DevKit must have Internet access if Docker is not installed.
+```bash
+./run-devkit.sh wait both
+```
 
-The commands used by this example have these functions:
+Show the application logs:
+
+```bash
+./run-devkit.sh logs both
+```
+
+A successful overlap check has output similar to this:
+
+```text
+<python-container>: status=exited exit=0 started=... finished=...
+<cpp-container>: status=exited exit=0 started=... finished=...
+overlap_seconds=13.088961
+concurrency_validation=passed
+```
+
+This result confirms that both applications ran at the same time. It does not
+compare their performance.
+
+The reports are written under `out/`. Bundled mode creates:
+
+```text
+out/python-bundled.json
+out/cpp-bundled.json
+```
+
+## Test one application
+
+For Python, run:
+
+```bash
+./run-devkit.sh run python
+./run-devkit.sh wait python
+./run-devkit.sh logs python
+```
+
+For C++, run:
+
+```bash
+./run-devkit.sh run cpp
+./run-devkit.sh wait cpp
+./run-devkit.sh logs cpp
+```
+
+The `wait` action fails if the application exit code is not zero.
+
+## Change the test length
+
+Each application processes 3,000 synthetic samples by default. Set `FRAMES`
+when you start the containers to use a different value:
+
+```bash
+FRAMES=100 ./run-devkit.sh run python
+FRAMES=5000 ./run-devkit.sh run both
+```
+
+You do not need to set `FRAMES` for `wait`, `status`, or `logs`.
+
+## Remove the containers
+
+The script keeps stopped containers so that you can inspect them. Remove them
+before you start another test with the same names:
+
+```bash
+./run-devkit.sh cleanup both
+```
+
+Replace `both` with `python` or `cpp` when necessary. Cleanup does not remove
+images, the ModelPack, or JSON reports.
+
+## How `dk container` works
+
+`dk container` commands run in the paired SDK shell, but they control Docker
+on the DevKit.
+
+If Docker is not installed on the DevKit, the first `dk container` command
+installs and configures it. The DevKit must have Internet access during that
+installation.
+
+The example uses these operations:
 
 | Command | Function on the DevKit |
 | --- | --- |
-| `dk container images` | Lists container images |
+| `dk container images` | Lists images |
 | `dk container list` | Lists containers |
 | `dk container deploy IMAGE ...` | Pulls an image and starts a container |
-| `dk container logs NAME` | Shows the container log |
+| `dk container logs NAME` | Shows a container log |
 | `dk container remove NAME --force` | Removes a container |
 
-For an image name such as `neat-yolo26-python-bundled:poc`, `dk` adds the
-configured registry address. It then makes the DevKit pull the complete image
-name. For example:
+For a local image name such as `neat-yolo26-python-bundled:poc`, `dk` adds the
+configured registry address before the DevKit pulls it.
 
-```text
-10.0.0.31:5050/neat-yolo26-python-bundled:poc
-```
+The deploy command accepts Docker options before `--`. It passes arguments
+after `--` to the application. `run-devkit.sh` uses this boundary to pass the
+model path, sample count, decode type, and report path.
 
-The registry address is different for each development environment. Show the
-correct value in the SDK shell:
+## Equivalent manual Docker test
+
+Use the helper script for normal tests. Use this procedure only to inspect the
+Docker operation directly.
+
+First, build the bundled Python image and show the registry address in the SDK
+shell:
 
 ```bash
+export RUNTIME_MODE=bundled
+./run-devkit.sh build python
 printf '%s\n' "${SIMA_CONTAINER_REGISTRY}"
 ```
 
-The `deploy` command accepts Docker run options before `--`. It passes all
-arguments after `--` to the image entry point. The launcher uses this
-separation to pass the model, sample count, decode type, and report path to the
-application.
-
-The SDK and the DevKit share `/workspace`. The image does not contain the
-ModelPack. The container reads the model from the shared project directory and
-writes its report to the same directory.
-
-## Run both images manually on the DevKit
-
-The normal test uses `run-devkit.sh`. Use the commands in this section only
-when you must examine the equivalent Docker operations.
-
-First, complete these actions in the SDK shell:
-
-1. Download the ModelPack as described above.
-2. Build and push both bundled images.
-3. Show and record `SIMA_CONTAINER_REGISTRY`.
-4. Run `dk container list` at least once.
-
-Then, open a DevKit shell:
+Connect to the DevKit. Replace `DEVKIT_IP` and `REGISTRY` with values from your
+environment:
 
 ```bash
-dk shell
-```
+ssh sima@DEVKIT_IP
 
-Set the project path and registry address on the DevKit. Replace the example
-registry address with the value from your SDK shell:
-
-```bash
 export PROJECT_DIR=/workspace/neat-examples/yolo26-container
 export REGISTRY=10.0.0.31:5050
+export IMAGE="${REGISTRY}/neat-yolo26-python-bundled:poc"
 
 mkdir -p "${PROJECT_DIR}/out"
+docker pull "${IMAGE}"
 ```
 
-Pull both bundled images:
-
-```bash
-docker pull "${REGISTRY}/neat-yolo26-python-bundled:poc"
-docker pull "${REGISTRY}/neat-yolo26-cpp-bundled:poc"
-```
-
-Start the Python container:
+Start the container:
 
 ```bash
 docker run --detach \
@@ -265,306 +268,107 @@ docker run --detach \
   --tmpfs /tmp:rw,exec,nosuid,size=512m,mode=1777 \
   --env HOME=/tmp \
   --env XDG_CACHE_HOME=/tmp/.cache \
-  "${REGISTRY}/neat-yolo26-python-bundled:poc" \
+  "${IMAGE}" \
   --model "${PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz" \
   --frames 3000 \
   --decode-type yolo26-det \
   --output-json "${PROJECT_DIR}/out/python-bundled.json"
 ```
 
-Start the C++ container:
-
-```bash
-docker run --detach \
-  --name neat-yolo26-cpp-bundled \
-  --network host \
-  --ipc host \
-  --device /dev/dma_heap/linux,cma:/dev/dma_heap/linux,cma \
-  --device /dev/mla:/dev/mla \
-  --device /dev/cvu:/dev/cvu \
-  --security-opt systempaths=unconfined \
-  --security-opt seccomp=unconfined \
-  --volume /bin:/bin:ro \
-  --volume /sbin:/sbin:ro \
-  --volume /usr:/usr:ro \
-  --volume /etc:/etc:ro \
-  --volume /opt:/opt:ro \
-  --volume /lib:/lib:ro \
-  --volume /media/nvme:/media/nvme \
-  --volume /workspace:/workspace \
-  --tmpfs /tmp:rw,exec,nosuid,size=512m,mode=1777 \
-  --env HOME=/tmp \
-  --env XDG_CACHE_HOME=/tmp/.cache \
-  "${REGISTRY}/neat-yolo26-cpp-bundled:poc" \
-  --model "${PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz" \
-  --frames 3000 \
-  --decode-type yolo26-det \
-  --output-json "${PROJECT_DIR}/out/cpp-bundled.json"
-```
-
-Both `docker run` commands return immediately because they use `--detach`.
-The containers then run at the same time.
-
-Check the containers:
-
-```bash
-docker ps --all \
-  --filter name=neat-yolo26-python-bundled \
-  --filter name=neat-yolo26-cpp-bundled
-```
-
-Wait for both containers. Each command prints the container exit code:
+Wait for the application, inspect its log, and remove the container:
 
 ```bash
 docker wait neat-yolo26-python-bundled
-docker wait neat-yolo26-cpp-bundled
-```
-
-Show the logs and verify that the execution times overlap:
-
-```bash
 docker logs neat-yolo26-python-bundled
-docker logs neat-yolo26-cpp-bundled
-
-python3 "${PROJECT_DIR}/verify-overlap.py" \
-  neat-yolo26-python-bundled \
-  neat-yolo26-cpp-bundled
+docker rm neat-yolo26-python-bundled
 ```
 
-Remove the containers when the test is complete:
+For C++, build `cpp` and use these values instead:
 
-```bash
-docker rm --force \
-  neat-yolo26-python-bundled \
-  neat-yolo26-cpp-bundled
-exit
-```
+| Item | C++ value |
+| --- | --- |
+| Image | `neat-yolo26-cpp-bundled:poc` |
+| Container | `neat-yolo26-cpp-bundled` |
+| Report | `out/cpp-bundled.json` |
 
-To test thin images, use these image and container names instead:
-
-| Application | Image | Container | Report |
-| --- | --- | --- | --- |
-| Python | `neat-yolo26-python:poc` | `neat-yolo26-python` | `out/python.json` |
-| C++ | `neat-yolo26-cpp:poc` | `neat-yolo26-cpp` | `out/cpp.json` |
-
-All other Docker options remain the same.
-
-## Run one application
-
-Start the Python container:
-
-```bash
-./run-devkit.sh run python
-```
-
-Wait for it to stop. Then, show its log:
-
-```bash
-./run-devkit.sh wait python
-./run-devkit.sh logs python
-```
-
-To test C++, run:
-
-```bash
-./run-devkit.sh run cpp
-./run-devkit.sh wait cpp
-./run-devkit.sh logs cpp
-```
-
-The `wait` action returns a failure if the container exit code is not zero.
-The script keeps the container after it stops.
-
-## Run both applications
-
-Start both containers:
-
-```bash
-./run-devkit.sh run both
-```
-
-Check their state:
-
-```bash
-./run-devkit.sh status both
-```
-
-Wait for both containers and check their execution times:
-
-```bash
-./run-devkit.sh wait both
-```
-
-Show both logs:
-
-```bash
-./run-devkit.sh logs both
-```
-
-A successful overlap check has output similar to this:
-
-```text
-<python-container>: status=exited exit=0 started=... finished=...
-<cpp-container>: status=exited exit=0 started=... finished=...
-overlap_seconds=13.088961
-concurrency_validation=passed
-```
-
-This result shows that the applications ran at the same time. It does not
-compare application performance.
-
-## Set the test length
-
-Each application processes 3,000 synthetic samples by default. Set `FRAMES`
-on the `run` command to use a different value:
-
-```bash
-FRAMES=100 ./run-devkit.sh run python
-FRAMES=5000 ./run-devkit.sh run both
-```
-
-The script stores the value when it starts the containers. You do not need to
-set `FRAMES` for `wait`, `status`, or `logs`.
-
-## Inspect and remove containers
-
-Inspect the retained containers:
-
-```bash
-./run-devkit.sh status both
-./run-devkit.sh logs both
-```
-
-Remove the containers before you start another test with the same names:
-
-```bash
-./run-devkit.sh cleanup both
-```
-
-You can replace `both` with `python` or `cpp`. The `cleanup` action does
-not remove images, the ModelPack, or JSON reports.
+All other Docker options are the same.
 
 ## Configuration variables
 
 | Variable | Default | Function |
 | --- | --- | --- |
-| `RUNTIME_MODE` | `host` | Selects a thin or bundled image |
+| `RUNTIME_MODE` | `host` | Selects thin or bundled images |
 | `FRAMES` | `3000` | Sets the number of synthetic samples |
-| `DEVKIT_PROJECT_DIR` | Script directory | Sets a different shared project path |
-| `MODEL_PATH` | `<project>/models/yolo26m-det-int8-b1.tar.gz` | Selects a different local ModelPack |
-| `MODEL_URL` | Pinned Model Zoo 2.1.3 URL | Selects a different download URL |
-| `PYTHON_IMAGE` | Mode-specific name | Sets the Python image name |
-| `CPP_IMAGE` | Mode-specific name | Sets the C++ image name |
-| `PYTHON_CONTAINER` | Mode-specific name | Sets the Python container name |
-| `CPP_CONTAINER` | Mode-specific name | Sets the C++ container name |
+| `DEVKIT_PROJECT_DIR` | Script directory | Sets the shared project path |
+| `MODEL_PATH` | `<project>/models/yolo26m-det-int8-b1.tar.gz` | Selects a ModelPack |
+| `MODEL_URL` | Pinned Model Zoo URL | Selects a download URL |
+| `PYTHON_IMAGE` | Mode-specific name | Overrides the Python image name |
+| `CPP_IMAGE` | Mode-specific name | Overrides the C++ image name |
+| `PYTHON_CONTAINER` | Mode-specific name | Overrides the Python container name |
+| `CPP_CONTAINER` | Mode-specific name | Overrides the C++ container name |
 
 ## Troubleshooting
 
 ### `dk is unavailable`
 
-The command is not running in the paired SDK shell, or the SDK setup did not
-finish.
-
-On the development host, run:
+Run the commands in the paired SDK shell. If SDK setup did not finish, run
+these commands on the development host:
 
 ```bash
 sima-cli neat install sdk@develop
 sima-cli sdk neat
 ```
 
-Enter the DevKit IP address when the installer asks for it.
-
 ### `SIMA_CONTAINER_REGISTRY is unset`
 
-Run `sima-cli neat install sdk@develop` again. Enable the local registry.
+Run `sima-cli neat install sdk@develop` again and enable the local registry.
 Then, open a new SDK shell.
-
-### The repository is not in `/workspace`
-
-On the development host, clone the repository under `~/workspace`:
-
-```bash
-mkdir -p ~/workspace
-cd ~/workspace
-git clone https://github.com/paconsultings/neat-examples.git
-sima-cli sdk neat
-```
 
 ### The model download fails
 
-Update sima-cli and authenticate again:
+Update sima-cli, sign in again, and repeat the `run` command:
 
 ```bash
 sima-cli selfupdate --prod --branch develop
-sima-cli --version
 sima-cli login
 ```
 
-Then, repeat the `run` command.
-
-You can also download the archive on an authenticated host. Put it in the
-`models/` directory in the shared workspace.
-
 ### A container with the same name exists
 
-Inspect and remove the old container:
+Inspect and remove the retained container:
 
 ```bash
 ./run-devkit.sh logs both
 ./run-devkit.sh cleanup both
 ```
 
-### Docker is not available on the DevKit
+### The DevKit cannot pull a local image
 
-From the SDK shell, run:
-
-```bash
-dk container list
-```
-
-If Docker is not present, this command installs and configures it. The DevKit
-must have Internet access.
-
-### The DevKit cannot pull an image
-
-Check the network path between the development host, the Docker or Colima
-virtual machine, and the DevKit.
-
-Show the registry address:
+Show the configured registry address:
 
 ```bash
 printf '%s\n' "${SIMA_CONTAINER_REGISTRY}"
 ```
 
-If the host address changed, run the SDK installation again.
-
-### An image has the wrong architecture
-
-Build the image with `run-devkit.sh`. The launcher selects `linux/arm64` and
-checks the C++ executable.
-
-### MLA initialization reports a missing device
-
-Check the eLxr version and the device files:
-
-```bash
-dk shell
-cat /etc/os-release
-ls -l /dev/dma_heap/linux,cma /dev/mla /dev/cvu
-exit
-```
-
-Use eLxr 3.0.0. Build ID B1859 is recommended.
+If the development host address changed, run the SDK installation again.
 
 ### A bundled build cannot find Neat
 
-Install the minimal Neat package in the SDK:
+Install minimal Neat Core in the SDK shell:
 
 ```bash
 sudo apt update
 sima-cli neat install core@develop -t minimal
 ```
 
-The installer puts the libraries and headers in the SDK sysroot. It also
-caches the Debian packages and the `pyneat` wheel under
-`${SYSROOT}/neat-install-packages`. The bundled build uses these files.
+### MLA initialization reports a missing device
+
+Connect to the DevKit and inspect the platform and devices:
+
+```bash
+ssh sima@DEVKIT_IP
+cat /etc/os-release
+ls -l /dev/dma_heap/linux,cma /dev/mla /dev/cvu
+```
+
+Use eLxr 3.0.0. Build ID B1859 is recommended.
