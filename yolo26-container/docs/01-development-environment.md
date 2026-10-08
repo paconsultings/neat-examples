@@ -131,6 +131,25 @@ dk container images
 dk container list
 ```
 
+## Install Neat from the develop branch on the DevKit
+
+The thin images use the Neat installation on the DevKit, and bundled builds
+stage their Neat user-space files from the paired DevKit. Install the current
+Neat Core `develop` build before building either image variant.
+
+Open a DevKit shell, refresh the apt package metadata, and then install Neat:
+
+```bash
+dk shell
+sudo apt update
+sima-cli neat install core@develop
+exit
+```
+
+Run `sudo apt update` immediately before the Neat installation so the installer
+resolves current package metadata. The DevKit needs network access for this
+step.
+
 ## Verify the DevKit platform and devices
 
 Open a DevKit shell:
