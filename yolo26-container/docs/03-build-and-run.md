@@ -100,6 +100,196 @@ registry.
 Do not replace `--push` with `--load`. The `--load` option puts the image
 only in the Docker engine on the development host.
 
+## Understand `dk container`
+
+Run `dk container` commands in the paired SDK shell. The commands control
+Docker on the DevKit. They do not control Docker in the SDK container.
+
+On the first `dk container` command, `dk` does these operations when
+necessary:
+
+1. Installs Docker on the DevKit.
+2. Moves Docker data storage to `/data`.
+3. Configures the DevKit to use the local development registry.
+
+The DevKit must have Internet access if Docker is not installed.
+
+The commands used by this example have these functions:
+
+| Command | Function on the DevKit |
+| --- | --- |
+| `dk container images` | Lists container images |
+| `dk container list` | Lists containers |
+| `dk container deploy IMAGE ...` | Pulls an image and starts a container |
+| `dk container logs NAME` | Shows the container log |
+| `dk container remove NAME --force` | Removes a container |
+
+For an image name such as `neat-yolo26-python-bundled:poc`, `dk` adds the
+configured registry address. It then makes the DevKit pull the complete image
+name. For example:
+
+```text
+10.0.0.31:5050/neat-yolo26-python-bundled:poc
+```
+
+The registry address is different for each development environment. Show the
+correct value in the SDK shell:
+
+```bash
+printf '%s\n' "${SIMA_CONTAINER_REGISTRY}"
+```
+
+The `deploy` command accepts Docker run options before `--`. It passes all
+arguments after `--` to the image entry point. The launcher uses this
+separation to pass the model, sample count, decode type, and report path to the
+application.
+
+The SDK and the DevKit share `/workspace`. The image does not contain the
+ModelPack. The container reads the model from the shared project directory and
+writes its report to the same directory.
+
+## Run both images manually on the DevKit
+
+The normal test uses `run-devkit.sh`. Use the commands in this section only
+when you must examine the equivalent Docker operations.
+
+First, complete these actions in the SDK shell:
+
+1. Download the ModelPack as described above.
+2. Build and push both bundled images.
+3. Show and record `SIMA_CONTAINER_REGISTRY`.
+4. Run `dk container list` at least once.
+
+Then, open a DevKit shell:
+
+```bash
+dk shell
+```
+
+Set the project path and registry address on the DevKit. Replace the example
+registry address with the value from your SDK shell:
+
+```bash
+export PROJECT_DIR=/workspace/neat-examples/yolo26-container
+export REGISTRY=10.0.0.31:5050
+
+mkdir -p "${PROJECT_DIR}/out"
+```
+
+Pull both bundled images:
+
+```bash
+docker pull "${REGISTRY}/neat-yolo26-python-bundled:poc"
+docker pull "${REGISTRY}/neat-yolo26-cpp-bundled:poc"
+```
+
+Start the Python container:
+
+```bash
+docker run --detach \
+  --name neat-yolo26-python-bundled \
+  --network host \
+  --ipc host \
+  --device /dev/dma_heap/linux,cma:/dev/dma_heap/linux,cma \
+  --device /dev/mla:/dev/mla \
+  --device /dev/cvu:/dev/cvu \
+  --security-opt systempaths=unconfined \
+  --security-opt seccomp=unconfined \
+  --volume /bin:/bin:ro \
+  --volume /sbin:/sbin:ro \
+  --volume /usr:/usr:ro \
+  --volume /etc:/etc:ro \
+  --volume /opt:/opt:ro \
+  --volume /lib:/lib:ro \
+  --volume /media/nvme:/media/nvme \
+  --volume /workspace:/workspace \
+  --tmpfs /tmp:rw,exec,nosuid,size=512m,mode=1777 \
+  --env HOME=/tmp \
+  --env XDG_CACHE_HOME=/tmp/.cache \
+  "${REGISTRY}/neat-yolo26-python-bundled:poc" \
+  --model "${PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz" \
+  --frames 3000 \
+  --decode-type yolo26-det \
+  --output-json "${PROJECT_DIR}/out/python-bundled.json"
+```
+
+Start the C++ container:
+
+```bash
+docker run --detach \
+  --name neat-yolo26-cpp-bundled \
+  --network host \
+  --ipc host \
+  --device /dev/dma_heap/linux,cma:/dev/dma_heap/linux,cma \
+  --device /dev/mla:/dev/mla \
+  --device /dev/cvu:/dev/cvu \
+  --security-opt systempaths=unconfined \
+  --security-opt seccomp=unconfined \
+  --volume /bin:/bin:ro \
+  --volume /sbin:/sbin:ro \
+  --volume /usr:/usr:ro \
+  --volume /etc:/etc:ro \
+  --volume /opt:/opt:ro \
+  --volume /lib:/lib:ro \
+  --volume /media/nvme:/media/nvme \
+  --volume /workspace:/workspace \
+  --tmpfs /tmp:rw,exec,nosuid,size=512m,mode=1777 \
+  --env HOME=/tmp \
+  --env XDG_CACHE_HOME=/tmp/.cache \
+  "${REGISTRY}/neat-yolo26-cpp-bundled:poc" \
+  --model "${PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz" \
+  --frames 3000 \
+  --decode-type yolo26-det \
+  --output-json "${PROJECT_DIR}/out/cpp-bundled.json"
+```
+
+Both `docker run` commands return immediately because they use `--detach`.
+The containers then run at the same time.
+
+Check the containers:
+
+```bash
+docker ps --all \
+  --filter name=neat-yolo26-python-bundled \
+  --filter name=neat-yolo26-cpp-bundled
+```
+
+Wait for both containers. Each command prints the container exit code:
+
+```bash
+docker wait neat-yolo26-python-bundled
+docker wait neat-yolo26-cpp-bundled
+```
+
+Show the logs and verify that the execution times overlap:
+
+```bash
+docker logs neat-yolo26-python-bundled
+docker logs neat-yolo26-cpp-bundled
+
+python3 "${PROJECT_DIR}/verify-overlap.py" \
+  neat-yolo26-python-bundled \
+  neat-yolo26-cpp-bundled
+```
+
+Remove the containers when the test is complete:
+
+```bash
+docker rm --force \
+  neat-yolo26-python-bundled \
+  neat-yolo26-cpp-bundled
+exit
+```
+
+To test thin images, use these image and container names instead:
+
+| Application | Image | Container | Report |
+| --- | --- | --- | --- |
+| Python | `neat-yolo26-python:poc` | `neat-yolo26-python` | `out/python.json` |
+| C++ | `neat-yolo26-cpp:poc` | `neat-yolo26-cpp` | `out/cpp.json` |
+
+All other Docker options remain the same.
+
 ## Run one application
 
 Start the Python container:
