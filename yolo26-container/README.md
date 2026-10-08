@@ -9,6 +9,13 @@
 > This is a preview workflow. It requires eLxr 3.0.0, sima-cli 2.1.19, and a
 > Neat SDK image built from the `develop` branch.
 
+At the time this guide was created, sima-cli 2.1.19 was a prerelease. Install
+or update to the required build from the `develop` branch with:
+
+```bash
+sima-cli selfupdate --prod --branch develop
+```
+
 This example builds and runs the same YOLO26 Neat benchmark as two independent
 ARM64 containers on a Modalix DevKit:
 

@@ -215,9 +215,11 @@ sima-cli sdk setup --devkit <devkit-ip> --workspace ~/sima-neat
 
 ### The model download fails or redirects repeatedly
 
-Confirm sima-cli 2.1.19 and authenticate again:
+Install the required sima-cli prerelease from the `develop` branch, confirm the
+version, and authenticate again:
 
 ```bash
+sima-cli selfupdate --prod --branch develop
 sima-cli --version
 sima-cli login
 ```

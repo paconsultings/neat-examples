@@ -8,7 +8,7 @@ DevKit for the YOLO26 container example.
 | Component | Requirement |
 | --- | --- |
 | DevKit platform | eLxr 3.0.0 on Modalix |
-| sima-cli | 2.1.19 |
+| sima-cli | 2.1.19 prerelease from the `develop` branch |
 | Neat SDK | Image built from the `develop` branch |
 | Development host | Linux or macOS with Docker and Buildx |
 | macOS container runtime | Current Colima release |
@@ -20,12 +20,21 @@ Internet access while `dk container setup` installs it.
 
 ## Install host prerequisites
 
-Install sima-cli 2.1.19 and Docker on the development host. On macOS, install a
-current Colima release as the Docker runtime. Confirm the CLI version:
+Install Docker on the development host. On macOS, install a current Colima
+release as the Docker runtime.
+
+At the time this guide was created, sima-cli 2.1.19 was a prerelease rather
+than the default production release. Install or update to it from the
+production artifact service's `develop` branch, then confirm the version:
 
 ```bash
+sima-cli selfupdate --prod --branch develop
 sima-cli --version
 ```
+
+The reported version must begin with `2.1.19`. This prerelease CLI is part of
+the preview workflow; return to the normal production channel when you no
+longer need the preview features.
 
 Docker socket access gives the SDK shell control of the host Docker engine.
 Use this workflow only on a trusted development host.
