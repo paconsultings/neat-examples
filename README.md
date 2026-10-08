@@ -23,7 +23,7 @@ Each top-level example is self-contained and should include:
 - a README with setup, build, run, inspection, and cleanup instructions;
 - source code that uses the public Neat API;
 - pinned or clearly documented external asset requirements;
-- validation notes describing what was tested; and
+- documented compatibility assumptions and known limitations; and
 - ignore rules that keep models, credentials, generated builds, and reports out
   of source control.
 
@@ -62,8 +62,8 @@ Examples generally move through these stages:
 
 Keep changes scoped to one example whenever possible. Do not commit model
 packages, generated binaries, container layers, credentials, private registry
-tokens, or benchmark output. When changing runtime behavior, record the tested
-SDK, Neat, and platform versions in that example's validation notes.
+tokens, or benchmark output. When changing runtime behavior, update the
+example README with any relevant SDK, Neat, or platform compatibility details.
 
 ## License and third-party software
 

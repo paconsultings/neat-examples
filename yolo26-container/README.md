@@ -340,9 +340,3 @@ Inspect its logs if needed, then remove it before starting the next run:
 
 Build it through `run-devkit.sh`. The launcher uses Buildx with
 `--platform linux/arm64` and verifies that the C++ executable is ARM64.
-
-## Validated configuration
-
-The thin and bundled images, individual execution paths, bundled library/plugin
-selection, and concurrent execution were validated on a Modalix DevKit. See
-`VALIDATION.md` for the recorded results.
