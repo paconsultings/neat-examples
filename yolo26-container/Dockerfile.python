@@ -1,0 +1,11 @@
+FROM scratch
+
+ARG APPS_REFERENCE_REV=f8fd5830c2c228560ccb94b3d0fa009ac53fb128
+LABEL org.opencontainers.image.title="Neat YOLO26 Python container POC" \
+      org.opencontainers.image.description="Thin Python app image using the Modalix target runtime" \
+      org.opencontainers.image.source="https://github.com/sima-neat/apps" \
+      org.opencontainers.image.revision="${APPS_REFERENCE_REV}"
+
+COPY main.py /app/main.py
+
+ENTRYPOINT ["/media/nvme/pyneat/bin/python3", "/app/main.py"]

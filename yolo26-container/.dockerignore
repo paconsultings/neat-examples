@@ -1,0 +1,8 @@
+*
+!Dockerfile.python
+!Dockerfile.cpp
+!Dockerfile.bundled
+!main.py
+!run-bundled-app.sh
+!build/cmake/yolo26-benchmark
+!build/bundled-runtime/**
