@@ -60,15 +60,7 @@ test -f "${PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz"
 
 ### Pull and run the prebuilt Python image
 
-If the package is private, sign in to GHCR first. Use a GitHub token that has
-permission to read the package:
-
-```bash
-printf '%s' "${GITHUB_TOKEN}" | \
-  docker login ghcr.io --username YOUR_GITHUB_USER --password-stdin
-```
-
-Then, pull and run the image:
+The image is public. Pull and run it without GHCR authentication:
 
 ```bash
 export PROJECT_DIR=/workspace/neat-examples/yolo26-container
