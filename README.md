@@ -14,7 +14,7 @@ security considerations, and validation status.
 
 | Directory | Description | Languages | Status |
 | --- | --- | --- | --- |
-| [`yolo26-container`](yolo26-container/) | Build and run YOLO26 Neat applications as Python or C++ containers on a Modalix DevKit | Python, C++ | Validated development example |
+| [`yolo26-container`](yolo26-container/) | Build and run YOLO26 Neat applications as Python or C++ containers on a Modalix DevKit | Python, C++ | Preview |
 
 ## Repository structure
 

@@ -1,5 +1,14 @@
 # Run Python and C++ Neat applications in containers
 
+![Status: Preview](https://img.shields.io/badge/status-preview-orange)
+![eLxr: 3.0.0](https://img.shields.io/badge/eLxr-3.0.0-blue)
+![sima-cli: 2.1.19](https://img.shields.io/badge/sima--cli-2.1.19-blue)
+![Neat SDK: develop](https://img.shields.io/badge/Neat_SDK-develop-blue)
+
+> [!IMPORTANT]
+> This is a preview workflow. It requires eLxr 3.0.0, sima-cli 2.1.19, and a
+> Neat SDK image built from the `develop` branch.
+
 This example shows how to build and run a Neat application as an ARM64
 container on a Modalix DevKit. It provides the same YOLO26 model benchmark in
 two languages:
@@ -36,7 +45,8 @@ platform runtime, kernel drivers, device nodes, model storage, and workspace.
 
 Before using this example, follow the prerequisites and environment setup in
 [SDK issue #236: Build and run a container application with the Neat SDK](https://github.com/sima-neat/sdk/issues/236).
-In particular, complete the steps that:
+Use eLxr 3.0.0 on the DevKit, sima-cli 2.1.19, and an SDK image built from the
+Neat SDK `develop` branch. Then complete the steps that:
 
 - install and verify Docker and Buildx on the development host;
 - pair the SDK with your DevKit using `sima-cli sdk setup`;
