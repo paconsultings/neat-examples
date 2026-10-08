@@ -60,10 +60,11 @@ test -f "${PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz"
 
 ### Pull and run the prebuilt Python image
 
-Open a DevKit shell:
+From the development host, connect directly to the DevKit. Replace
+`DEVKIT_IP` with the DevKit IP address:
 
 ```bash
-dk shell
+ssh sima@DEVKIT_IP
 ```
 
 Then, run these commands on the DevKit:
