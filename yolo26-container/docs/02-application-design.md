@@ -108,9 +108,15 @@ Both applications use:
 models/yolo26m-det-int8-b1.tar.gz
 ```
 
-The model is downloaded separately and ignored by Git. With the default thin
-mode, reports are written to `out/python.json` and `out/cpp.json`. Bundled mode
-uses `out/python-bundled.json` and `out/cpp-bundled.json`.
+When the archive is missing, `run-devkit.sh run` uses `sima-cli` to retrieve it
+from the SiMa Developer Portal. The user must have a valid Developer Portal
+account with access to the model and an authenticated `sima-cli` session. Run
+`sima-cli login` before starting the example if authentication has not already
+been configured.
+
+The downloaded model is ignored by Git. With the default thin mode, reports
+are written to `out/python.json` and `out/cpp.json`. Bundled mode uses
+`out/python-bundled.json` and `out/cpp-bundled.json`.
 
 Models, reports, staged runtime files, cross-build output, and container layers
 must not be committed to this repository.
