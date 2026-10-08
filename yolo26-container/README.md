@@ -18,9 +18,6 @@ Modalix DevKit:
 - a Python application that uses the public `pyneat` API
 - a C++20 application that uses the public Neat C++ API
 
-You can run one application or both applications. You can also select a thin
-image or a bundled image.
-
 ## Quick start with a prebuilt container image
 
 This sample project uses a CI/CD workflow to build the bundled ARM64 container
