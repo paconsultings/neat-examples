@@ -10,11 +10,12 @@ on the DevKit.
 
 Use this sequence:
 
-1. Select thin or bundled images.
-2. Build and push ARM64 images to the local registry.
-3. Deploy one or both images to the DevKit.
-4. Wait for the applications and inspect their logs.
-5. Remove the retained containers before the next test.
+1. Select bundled mode.
+2. Build and test one Python container.
+3. Inspect its log and JSON report.
+4. Build the C++ image.
+5. Run the Python and C++ containers at the same time.
+6. Verify the concurrent test and remove the containers.
 
 ## Check the environment
 
@@ -35,22 +36,16 @@ docker buildx version
 
 All commands must succeed.
 
-## Select an image type
+## Select bundled mode
 
-Thin images use the Neat installation on the DevKit. Thin mode is the default:
-
-```bash
-unset RUNTIME_MODE
-```
-
-Bundled images include the Neat user-space runtime from the SDK sysroot:
+Start with bundled images. They include the Neat user-space runtime from the
+SDK sysroot:
 
 ```bash
 export RUNTIME_MODE=bundled
 ```
 
-Keep the selected value until the test is complete. Each mode uses different
-image, container, and report names.
+Keep this value until the test is complete.
 
 ## Get the YOLO26 ModelPack
 
@@ -75,36 +70,48 @@ test -f models/yolo26m-det-int8-b1.tar.gz
 
 Do not commit the model archive.
 
-## Build and push the images
+## First test: run one Python container
 
-Build both images:
-
-```bash
-./run-devkit.sh build both
-```
-
-To build only one language, run:
+Build and push the Python image:
 
 ```bash
 ./run-devkit.sh build python
+```
+
+Start the Python container, wait for it to finish, and show its output:
+
+```bash
+./run-devkit.sh run python
+./run-devkit.sh wait python
+./run-devkit.sh logs python
+```
+
+The `run` action starts the container in the background. The `wait` action
+blocks until the application stops and fails if its exit code is not zero. The
+`logs` action then shows the application result.
+
+Inspect the JSON report:
+
+```bash
+python3 -m json.tool out/python-bundled.json
+```
+
+The script retains the stopped container. Remove it before the next test:
+
+```bash
+./run-devkit.sh cleanup python
+```
+
+## Next test: run two containers
+
+The Python image is already in the local registry. Build and push the C++
+image:
+
+```bash
 ./run-devkit.sh build cpp
 ```
 
-The build uses Buildx with `--platform linux/arm64`. It pushes the images to
-the local registry named by `SIMA_CONTAINER_REGISTRY`. The DevKit pulls the
-images from that registry during deployment.
-
-The C++ build cross-compiles `main.cpp` and checks that the executable is
-ARM64. A bundled build also copies the Neat runtime files and plug-ins from the
-SDK sysroot and extracts `pyneat` from the wheel cached by the Neat installer.
-It does not copy Neat from the DevKit.
-
-Do not replace `--push` with `--load`. The `--load` option puts an image only
-in the Docker engine on the development host.
-
-## Deploy and test both applications
-
-Start the Python and C++ containers in the background:
+Start the Python and C++ containers:
 
 ```bash
 ./run-devkit.sh run both
@@ -140,32 +147,51 @@ concurrency_validation=passed
 This result confirms that both applications ran at the same time. It does not
 compare their performance.
 
-The reports are written under `out/`. Bundled mode creates:
-
-```text
-out/python-bundled.json
-out/cpp-bundled.json
-```
-
-## Test one application
-
-For Python, run:
+Inspect both reports:
 
 ```bash
-./run-devkit.sh run python
-./run-devkit.sh wait python
-./run-devkit.sh logs python
+python3 -m json.tool out/python-bundled.json
+python3 -m json.tool out/cpp-bundled.json
 ```
 
-For C++, run:
+Remove both containers when the test is complete:
 
 ```bash
-./run-devkit.sh run cpp
-./run-devkit.sh wait cpp
-./run-devkit.sh logs cpp
+./run-devkit.sh cleanup both
 ```
 
-The `wait` action fails if the application exit code is not zero.
+Cleanup does not remove images, the ModelPack, or JSON reports.
+
+## How the build works
+
+The build uses Buildx with `--platform linux/arm64`. It pushes the images to
+the local registry named by `SIMA_CONTAINER_REGISTRY`. The DevKit pulls the
+images from that registry during deployment.
+
+The C++ build cross-compiles `main.cpp` and checks that the executable is
+ARM64. A bundled build copies the Neat runtime files and plug-ins from the SDK
+sysroot and extracts `pyneat` from the wheel cached by the Neat installer. It
+does not copy Neat from the DevKit.
+
+Do not replace `--push` with `--load`. The `--load` option puts an image only
+in the Docker engine on the development host.
+
+To build both images in one command, run:
+
+```bash
+./run-devkit.sh build both
+```
+
+## Optional: test thin images
+
+Thin images use the Neat installation on the DevKit. Select thin mode:
+
+```bash
+unset RUNTIME_MODE
+```
+
+Build and test them with the same `build`, `run`, `wait`, `logs`, and `cleanup`
+commands. Thin mode uses different image, container, and report names.
 
 ## Change the test length
 
@@ -178,18 +204,6 @@ FRAMES=5000 ./run-devkit.sh run both
 ```
 
 You do not need to set `FRAMES` for `wait`, `status`, or `logs`.
-
-## Remove the containers
-
-The script keeps stopped containers so that you can inspect them. Remove them
-before you start another test with the same names:
-
-```bash
-./run-devkit.sh cleanup both
-```
-
-Replace `both` with `python` or `cpp` when necessary. Cleanup does not remove
-images, the ModelPack, or JSON reports.
 
 ## How `dk container` works
 
