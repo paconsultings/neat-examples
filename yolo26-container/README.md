@@ -31,8 +31,9 @@ points to the latest successful build from the `main` branch.
 This quick start uses the prebuilt Python image. You do not have to build the
 application, install the Neat SDK, or install Neat Core before you run it.
 
-The DevKit must have Docker and sima-cli 2.1.19. The repository must be
-available at `/workspace/neat-examples` on the DevKit.
+The DevKit must have Docker and sima-cli 2.1.19. You do not need to clone this
+repository for the prebuilt-image test. The commands create a working directory
+under `/workspace` on the DevKit.
 
 From the development host, connect directly to the DevKit. Replace
 `DEVKIT_IP` with the DevKit IP address:
@@ -50,12 +51,14 @@ account to download the model.
 sima-cli --version
 
 export PROJECT_DIR=/workspace/neat-examples/yolo26-container
-mkdir -p "${PROJECT_DIR}/models"
+mkdir -p "${PROJECT_DIR}"
+cd "${PROJECT_DIR}"
+mkdir -p models out
 
-sima-cli download --dest "${PROJECT_DIR}/models" \
+sima-cli download --dest models \
   https://docs.sima.ai/pkg_downloads/SDK2.1.3/models/modalix/yolo26-detection/yolo26m-det-int8-b1.tar.gz
 
-test -f "${PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz"
+test -f models/yolo26m-det-int8-b1.tar.gz
 ```
 
 ### Pull and run the prebuilt Python image
@@ -66,7 +69,6 @@ The image is public. Pull and run it without GHCR authentication:
 export PROJECT_DIR=/workspace/neat-examples/yolo26-container
 export IMAGE=ghcr.io/paconsultings/neat-yolo26-python-bundled:develop
 
-mkdir -p "${PROJECT_DIR}/out"
 docker pull "${IMAGE}"
 
 docker run --name neat-yolo26-python-bundled \
