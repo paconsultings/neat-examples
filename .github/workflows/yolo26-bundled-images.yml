@@ -75,7 +75,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sima-cli sdk neat '
+          sdk_container="$(
+            docker ps \
+              --filter ancestor=ghcr.io/sima-neat/sdk-develop:latest \
+              --format '{{.Names}}' |
+              head -n 1
+          )"
+          if [[ -z "${sdk_container}" ]]; then
+            echo "The develop Neat SDK container is not running." >&2
+            exit 1
+          fi
+          docker exec "${sdk_container}" bash -lc '
             set -euo pipefail
             sudo apt update
             NEAT_INSTALLER_SKIP_DEVKIT_SYNC=ON \
