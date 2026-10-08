@@ -260,14 +260,16 @@ launch() {
     exit 2
   fi
 
-  # SWMLA-10052 currently requires unmasked system paths, io_uring syscalls,
-  # and privileged device access. Keep these together until the runtime is fixed.
+  # SWMLA-10052 currently requires unmasked system paths and io_uring syscalls.
+  # Expose only the accelerator devices used by this workload.
   dk container deploy "${image}" \
     --detach \
     --name "${name}" \
     --network host \
     --ipc host \
-    --privileged \
+    --device /dev/dma_heap/linux,cma:/dev/dma_heap/linux,cma \
+    --device /dev/mla:/dev/mla \
+    --device /dev/cvu:/dev/cvu \
     --security-opt systempaths=unconfined \
     --security-opt seccomp=unconfined \
     --volume /bin:/bin:ro \
