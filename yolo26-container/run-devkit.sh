@@ -4,6 +4,7 @@ set -euo pipefail
 ACTION="${1:-help}"
 TARGET="${2:-both}"
 RUNTIME_MODE="${RUNTIME_MODE:-host}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 case "${RUNTIME_MODE}" in
   host)
@@ -26,8 +27,9 @@ case "${RUNTIME_MODE}" in
     ;;
 esac
 FRAMES="${FRAMES:-3000}"
-DEVKIT_PROJECT_DIR="${DEVKIT_PROJECT_DIR:-/workspace/yolo26-container}"
+DEVKIT_PROJECT_DIR="${DEVKIT_PROJECT_DIR:-${SCRIPT_DIR}}"
 MODEL_PATH="${MODEL_PATH:-${DEVKIT_PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz}"
+MODEL_URL="${MODEL_URL:-https://docs.sima.ai/pkg_downloads/SDK2.1.3/models/modalix/yolo26-detection/yolo26m-det-int8-b1.tar.gz}"
 
 usage() {
   cat <<'EOF'
@@ -103,6 +105,28 @@ includes_target() {
 
 container_exists() {
   "${devkit_ssh[@]}" docker container inspect "$1" >/dev/null 2>&1
+}
+
+ensure_model() {
+  [[ -f "${MODEL_PATH}" ]] && return
+
+  if ! command -v sima-cli >/dev/null 2>&1; then
+    echo "YOLO26 model not found at ${MODEL_PATH}" >&2
+    echo "sima-cli is unavailable; install it or set MODEL_PATH to an existing ModelPack." >&2
+    exit 2
+  fi
+
+  local model_dir
+  model_dir="$(dirname -- "${MODEL_PATH}")"
+  mkdir -p "${model_dir}"
+  echo "Downloading the YOLO26 ModelPack to ${model_dir}."
+  sima-cli download --dest "${model_dir}" "${MODEL_URL}"
+
+  if [[ ! -f "${MODEL_PATH}" ]]; then
+    echo "Download completed but the expected model was not found at ${MODEL_PATH}." >&2
+    echo "Set MODEL_PATH to the downloaded archive or use a MODEL_URL with the expected filename." >&2
+    exit 2
+  fi
 }
 
 stage_neat_development_files() {
@@ -302,15 +326,7 @@ case "${ACTION}" in
     build_images
     ;;
   run)
-    if [[ ! -f "${MODEL_PATH}" ]]; then
-      echo "YOLO26 model not found at ${MODEL_PATH}" >&2
-      cat >&2 <<'EOF'
-Download it from the development host in the example directory:
-  mkdir -p models
-  sima-cli download --dest models https://docs.sima.ai/pkg_downloads/SDK2.1.3/models/modalix/yolo26-detection/yolo26m-det-int8-b1.tar.gz
-EOF
-      exit 2
-    fi
+    ensure_model
     mkdir -p "${DEVKIT_PROJECT_DIR}/out"
     includes_target python && launch "${PYTHON_IMAGE}" "${PYTHON_CONTAINER}" \
       "${DEVKIT_PROJECT_DIR}/out/python${REPORT_SUFFIX}.json"

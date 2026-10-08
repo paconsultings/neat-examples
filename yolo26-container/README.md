@@ -44,13 +44,13 @@ In particular, complete the steps that:
 - verify that `SIMA_CONTAINER_REGISTRY` is configured; and
 - prepare Docker on the DevKit with `dk container setup`.
 
-The host and DevKit must be able to reach each other over the network. Download
-the model on the development host as described below. Run the image build and
-DevKit commands inside the paired Neat SDK shell.
+The host and DevKit must be able to reach each other over the network. Run the
+model download, image build, and DevKit commands inside the paired Neat SDK
+shell.
 
-This example additionally requires the YOLO26 ModelPack. On the development
-host, change to the example directory and download the Model Zoo `2.1.3`
-artifact with `sima-cli`:
+This example additionally requires the YOLO26 ModelPack. When
+`run-devkit.sh run` cannot find it, the script uses `sima-cli` to download the
+Model Zoo `2.1.3` artifact automatically. To download it ahead of time, run:
 
 ```bash
 cd path/to/yolo26-container
@@ -65,7 +65,7 @@ missing, and safely skips it when the complete file is already present. The
 result must be:
 
 ```text
-/workspace/yolo26-container/models/yolo26m-det-int8-b1.tar.gz
+<example-directory>/models/yolo26m-det-int8-b1.tar.gz
 ```
 
 The `models` directory is shared with the SDK and DevKit through `/workspace`,
@@ -324,8 +324,8 @@ Confirm that this file exists and is a valid ModelPack archive:
 /workspace/yolo26-container/models/yolo26m-det-int8-b1.tar.gz
 ```
 
-If it is missing or incomplete, repeat the `sima-cli download` command from the
-development host. The CLI resumes a partial download when possible.
+If it is missing or incomplete, run `run-devkit.sh run` again or repeat the
+`sima-cli download` command. The CLI resumes a partial download when possible.
 
 ### A container with the same name already exists
 
