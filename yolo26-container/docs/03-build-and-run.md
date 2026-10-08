@@ -269,7 +269,8 @@ that the C++ executable is ARM64.
 
 ### MLA initialization reports a missing device
 
-Confirm eLxr 3.0.0 and the required DevKit devices:
+Confirm eLxr 3.0.0 and the required DevKit devices. Build ID B1859 is
+recommended:
 
 ```bash
 dk shell

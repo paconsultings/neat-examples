@@ -2,12 +2,14 @@
 
 ![Status: Preview](https://img.shields.io/badge/status-preview-orange)
 ![eLxr: 3.0.0](https://img.shields.io/badge/eLxr-3.0.0-blue)
+![Recommended build: B1859](https://img.shields.io/badge/recommended_build-B1859-blueviolet)
 ![sima-cli: 2.1.19](https://img.shields.io/badge/sima--cli-2.1.19-blue)
 ![Neat SDK: develop](https://img.shields.io/badge/Neat_SDK-develop-blue)
 
 > [!IMPORTANT]
 > This is a preview workflow. It requires eLxr 3.0.0, sima-cli 2.1.19, and a
-> Neat SDK image built from the `develop` branch.
+> Neat SDK image built from the `develop` branch. The recommended eLxr 3.0.0
+> build ID is B1859.
 
 At the time this guide was created, sima-cli 2.1.19 was a prerelease. Install
 or update to the required build from the `develop` branch with:

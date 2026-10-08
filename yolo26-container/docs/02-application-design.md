@@ -55,8 +55,9 @@ checks that the result is an AArch64 executable before building the image.
 | Typical use | Small image on a prepared DevKit | Portable Neat user space on a compatible platform |
 
 The bundled image is not a complete DevKit root filesystem. It still requires
-eLxr 3.0.0, Python 3.13 for the Python target, compatible platform libraries,
-MLA-RT, kernel drivers, and SiMa device nodes.
+eLxr 3.0.0 on Modalix, Python 3.13 for the Python target, compatible platform
+libraries, MLA-RT, kernel drivers, and SiMa device nodes. Build ID B1859 is the
+recommended eLxr 3.0.0 build for this preview.
 
 Building a bundled image requires a paired source DevKit containing the Neat
 version to package. The script copies the relevant user-space files into the

@@ -7,7 +7,7 @@ DevKit for the YOLO26 container example.
 
 | Component | Requirement |
 | --- | --- |
-| DevKit platform | eLxr 3.0.0 on Modalix |
+| DevKit platform | eLxr 3.0.0 on Modalix; build ID B1859 recommended |
 | sima-cli | 2.1.19 prerelease from the `develop` branch |
 | Neat SDK | Image built from the `develop` branch |
 | Development host | Linux or macOS with Docker and Buildx |
@@ -139,7 +139,8 @@ Open a DevKit shell:
 dk shell
 ```
 
-On the DevKit, confirm eLxr 3.0.0, Docker, and the accelerator devices:
+On the DevKit, confirm eLxr 3.0.0, Docker, and the accelerator devices. Build
+ID B1859 is recommended for this preview:
 
 ```bash
 cat /etc/os-release
