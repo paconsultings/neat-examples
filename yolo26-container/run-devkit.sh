@@ -129,109 +129,17 @@ ensure_model() {
   fi
 }
 
-stage_neat_development_files() {
-  if [[ -z "${SYSROOT:-}" ]]; then
-    # shellcheck source=/dev/null
-    source /opt/bin/simaai-init-build-env modalix >/dev/null
-  fi
-
-  local neat_target_root="${PWD}/build/devkit-neat-root"
-  local remote_neat_version
-  local cached_neat_version
-  remote_neat_version="$("${devkit_ssh[@]}" "dpkg-query -W -f='\${Version}' sima-neat-dev")"
-  cached_neat_version="$(cat "${neat_target_root}/.version" 2>/dev/null || true)"
-
-  if [[ "${cached_neat_version}" != "${remote_neat_version}" ]]; then
-    rm -rf "${neat_target_root}"
-    mkdir -p "${neat_target_root}"
-    "${devkit_ssh[@]}" '
-      set -eu
-      {
-        dpkg -L sima-neat-dev
-        dpkg -L sima-neat
-        dpkg -L nlohmann-json3-dev
-      } | grep -E "^/usr/include/|^/usr/lib/cmake/SimaNeat/|^/usr/lib/libsima_neat[.]so|^/usr/share/cmake/nlohmann_json/" \
-        | sort -u \
-        | tar -czf - -T -
-    ' | tar -xzf - -C "${neat_target_root}"
-    printf '%s\n' "${remote_neat_version}" > "${neat_target_root}/.version"
-  fi
-}
-
-stage_bundled_runtime() {
-  local bundle_root="${PWD}/build/bundled-runtime"
-  local remote_bundle_version
-  local cached_bundle_version
-  local remote_neat_version
-
-  remote_bundle_version="bundle-schema=2
-$("${devkit_ssh[@]}" "dpkg-query -W -f='\${Package}=\${Version}\n' sima-neat neat-runtime neat-gst-plugins sima-lmm-core; /usr/bin/python3.13 -c 'import pyneat; print(\"pyneat=\" + pyneat.__version__)' 2>/dev/null || true")"
-  remote_neat_version="$("${devkit_ssh[@]}" "dpkg-query -W -f='\${Version}' sima-neat")"
-  cached_bundle_version="$(cat "${bundle_root}/.version" 2>/dev/null || true)"
-
-  if [[ "${cached_bundle_version}" == "${remote_bundle_version}" ]]; then
-    return
-  fi
-
-  rm -rf "${bundle_root}"
-  mkdir -p "${bundle_root}/rootfs" "${bundle_root}/python"
-
-  # The remote script is intentionally single-quoted so expansion happens on
-  # the DevKit instead of in the SDK shell.
-  # shellcheck disable=SC2016
-  "${devkit_ssh[@]}" '
-    set -eu
-    {
-      dpkg -L sima-neat neat-runtime neat-gst-plugins
-      dpkg -L sima-lmm-core | grep -E "/libsima_lmm_runtime[.]so"
-    } | grep -E "^/usr/lib/|^/usr/libexec/sima-neat|^/usr/share/sima-neat" \
-      | sort -u \
-      | while IFS= read -r path; do
-          if [ -f "${path}" ] || [ -L "${path}" ]; then
-            printf "%s\n" "${path}"
-          fi
-        done \
-      | tar -czf - -T -
-  ' | tar -xzf - -C "${bundle_root}/rootfs"
-
-  "${devkit_ssh[@]}" '
-    set -eu
-    cd /media/nvme/pyneat/lib/python3.13/site-packages
-    tar -czf - pyneat pyneat-*.dist-info
-  ' | tar -xzf - -C "${bundle_root}/python"
-
-  printf '%s\n' "${remote_bundle_version}" > "${bundle_root}/.version"
-  printf '%s\n' "${remote_neat_version}" > "${bundle_root}/.neat-version"
-}
-
 build_cpp_binary() {
-  stage_neat_development_files
-  local neat_target_root="${PWD}/build/devkit-neat-root"
-  local cmake_args=(
-    -S .
-    -B build/cmake
-    -DCMAKE_BUILD_TYPE=Release
-    -DSimaNeat_DIR="${neat_target_root}/usr/lib/cmake/SimaNeat"
-    -Dnlohmann_json_DIR="${neat_target_root}/usr/share/cmake/nlohmann_json"
-  )
-  if [[ ! -f build/cmake/CMakeCache.txt ]]; then
-    cmake_args+=(-DCMAKE_TOOLCHAIN_FILE=cmake/modalix-arm64.cmake)
-  fi
-  cmake "${cmake_args[@]}"
-  cmake --build build/cmake --parallel
-  file build/cmake/yolo26-benchmark | grep -Eq 'aarch64|ARM aarch64|ARM64'
+  "${SCRIPT_DIR}/prepare-build.sh" cpp
 }
 
 build_images() {
   if [[ "${RUNTIME_MODE}" == "bundled" ]]; then
-    stage_bundled_runtime
+    "${SCRIPT_DIR}/prepare-build.sh" --bundled "${TARGET}"
     local bundled_dockerfile="Dockerfile.bundled"
     local neat_runtime_version
     neat_runtime_version="$(cat build/bundled-runtime/.neat-version)"
 
-    if includes_target cpp; then
-      build_cpp_binary
-    fi
     if includes_target python; then
       docker buildx build \
         --platform linux/arm64 \

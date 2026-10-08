@@ -2,10 +2,13 @@ FROM scratch AS neat-runtime
 
 ARG NEAT_RUNTIME_VERSION=unknown
 ARG APPS_REFERENCE_REV=f8fd5830c2c228560ccb94b3d0fa009ac53fb128
+ARG IMAGE_SOURCE=https://github.com/paconsultings/neat-examples
+ARG IMAGE_REVISION=unknown
 LABEL org.opencontainers.image.description="YOLO26 app with bundled Neat user-space runtime" \
-      org.opencontainers.image.source="https://github.com/sima-neat/apps" \
-      org.opencontainers.image.revision="${APPS_REFERENCE_REV}" \
-      ai.sima.neat.runtime-version="${NEAT_RUNTIME_VERSION}"
+      org.opencontainers.image.source="${IMAGE_SOURCE}" \
+      org.opencontainers.image.revision="${IMAGE_REVISION}" \
+      ai.sima.neat.runtime-version="${NEAT_RUNTIME_VERSION}" \
+      ai.sima.neat.apps-reference-revision="${APPS_REFERENCE_REV}"
 
 COPY build/bundled-runtime/rootfs/ /app/runtime/rootfs/
 COPY build/bundled-runtime/python/ /app/runtime/python/

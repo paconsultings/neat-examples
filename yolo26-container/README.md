@@ -5,6 +5,7 @@
 ![Recommended build: B1859](https://img.shields.io/badge/recommended_build-B1859-blueviolet)
 ![sima-cli: 2.1.19](https://img.shields.io/badge/sima--cli-2.1.19-blue)
 ![Neat SDK: develop](https://img.shields.io/badge/Neat_SDK-develop-blue)
+[![Bundled images](https://github.com/paconsultings/neat-examples/actions/workflows/yolo26-bundled-images.yml/badge.svg)](https://github.com/paconsultings/neat-examples/actions/workflows/yolo26-bundled-images.yml)
 
 > [!IMPORTANT]
 > This example is a preview. Use eLxr 3.0.0, sima-cli 2.1.19, and a Neat SDK
@@ -29,14 +30,15 @@ For the first test, read these guides in order:
 
 ## Quick start
 
-Complete the setup guide first. Then, run these commands in the Neat SDK shell:
+Complete the setup guide first. Then, use the prebuilt bundled images:
 
 ```bash
 cd /workspace/neat-examples/yolo26-container
 
 export RUNTIME_MODE=bundled
+export PYTHON_IMAGE=ghcr.io/paconsultings/neat-yolo26-python-bundled:develop
+export CPP_IMAGE=ghcr.io/paconsultings/neat-yolo26-cpp-bundled:develop
 
-./run-devkit.sh build both
 ./run-devkit.sh run both
 ./run-devkit.sh wait both
 ./run-devkit.sh logs both
@@ -73,10 +75,22 @@ and device nodes from the DevKit.
 | `Dockerfile.python` | Builds the thin Python image |
 | `Dockerfile.cpp` | Builds the thin C++ image |
 | `Dockerfile.bundled` | Builds a bundled Python or C++ image |
+| `prepare-build.sh` | Stages Neat from the SDK and builds the C++ application |
 | `run-bundled-app.sh` | Checks the bundled Neat runtime at startup |
 | `run-devkit.sh` | Builds, deploys, checks, and removes containers |
 | `verify-overlap.py` | Checks that two containers ran at the same time |
 | `docs/` | Contains setup, design, and test instructions |
+
+## Published images
+
+GitHub Actions builds both bundled images on an ARM64 GitHub-hosted runner. It
+publishes a moving `develop` tag and an immutable `sha-<commit>` tag:
+
+- `ghcr.io/paconsultings/neat-yolo26-python-bundled:develop`
+- `ghcr.io/paconsultings/neat-yolo26-cpp-bundled:develop`
+
+The workflow installs Neat in the SDK. It does not copy Neat files from a
+DevKit.
 
 ## Security scope
 

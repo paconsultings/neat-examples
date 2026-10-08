@@ -1,0 +1,164 @@
+name: Publish YOLO26 bundled images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/yolo26-bundled-images.yml
+      - yolo26-container/CMakeLists.txt
+      - yolo26-container/Dockerfile.bundled
+      - yolo26-container/cmake/**
+      - yolo26-container/main.cpp
+      - yolo26-container/main.py
+      - yolo26-container/prepare-build.sh
+      - yolo26-container/run-bundled-app.sh
+  workflow_dispatch:
+
+concurrency:
+  group: yolo26-bundled-images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build ARM64 images
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6
+
+      - name: Install or verify host Docker
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v docker >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes docker.io
+          fi
+          sudo systemctl start docker
+          docker version
+          docker buildx version
+
+      - name: Install sima-cli develop
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://artifacts.neat.sima.ai/sima-cli/linux-mac.sh | bash
+          export PATH="${HOME}/.sima-cli/.venv/bin:${PATH}"
+          echo "${HOME}/.sima-cli/.venv/bin" >> "${GITHUB_PATH}"
+          sima-cli selfupdate --prod --branch develop
+          sima-cli --version
+
+      - name: Install the develop SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          install_dir="${RUNNER_TEMP}/neat-sdk-install"
+          mkdir -p "${install_dir}"
+          sima-cli neat install sdk@develop \
+            --download-only \
+            --install-dir "${install_dir}"
+          sima-cli sdk setup \
+            --minimal \
+            --noninteractive \
+            --yes \
+            --workspace "${GITHUB_WORKSPACE}" \
+            --image ghcr.io/sima-neat/sdk-develop:latest
+
+      - name: Install Neat in the SDK and prepare the build context
+        shell: bash
+        run: |
+          set -euo pipefail
+          sima-cli sdk neat '
+            set -euo pipefail
+            sudo apt update
+            NEAT_INSTALLER_SKIP_DEVKIT_SYNC=ON \
+              sima-cli neat install core@develop -t minimal
+            cd /workspace/yolo26-container
+            ./prepare-build.sh --bundled both
+          '
+
+      - name: Set image names
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="$(printf '%s' "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          {
+            echo "PYTHON_IMAGE=ghcr.io/${owner}/neat-yolo26-python-bundled"
+            echo "CPP_IMAGE=ghcr.io/${owner}/neat-yolo26-cpp-bundled"
+            echo "IMAGE_TAG=sha-${GITHUB_SHA:0:12}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Log in to GitHub Container Registry
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "${GHCR_TOKEN}" |
+            docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+
+      - name: Create the Buildx builder
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx create --name yolo26-publisher --driver docker-container --use
+          docker buildx inspect --bootstrap
+
+      - name: Build and publish the Python image
+        shell: bash
+        working-directory: yolo26-container
+        run: |
+          set -euo pipefail
+          tags=(--tag "${PYTHON_IMAGE}:${IMAGE_TAG}")
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            tags+=(--tag "${PYTHON_IMAGE}:develop")
+          fi
+          runtime_version="$(<build/bundled-runtime/.neat-version)"
+          docker buildx build \
+            --platform linux/arm64 \
+            --file Dockerfile.bundled \
+            --target python \
+            --build-arg "NEAT_RUNTIME_VERSION=${runtime_version}" \
+            --build-arg "IMAGE_REVISION=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --provenance mode=max \
+            --sbom true \
+            "${tags[@]}" \
+            --push \
+            .
+
+      - name: Build and publish the C++ image
+        shell: bash
+        working-directory: yolo26-container
+        run: |
+          set -euo pipefail
+          tags=(--tag "${CPP_IMAGE}:${IMAGE_TAG}")
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            tags+=(--tag "${CPP_IMAGE}:develop")
+          fi
+          runtime_version="$(<build/bundled-runtime/.neat-version)"
+          docker buildx build \
+            --platform linux/arm64 \
+            --file Dockerfile.bundled \
+            --target cpp \
+            --build-arg "NEAT_RUNTIME_VERSION=${runtime_version}" \
+            --build-arg "IMAGE_REVISION=${GITHUB_SHA}" \
+            --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --provenance mode=max \
+            --sbom true \
+            "${tags[@]}" \
+            --push \
+            .
+
+      - name: Inspect the published images
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker buildx imagetools inspect "${PYTHON_IMAGE}:${IMAGE_TAG}"
+          docker buildx imagetools inspect "${CPP_IMAGE}:${IMAGE_TAG}"

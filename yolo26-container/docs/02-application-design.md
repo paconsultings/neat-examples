@@ -40,8 +40,8 @@ The thin image starts the application with the DevKit Python environment at
 configuration as the Python application. It calls
 `simaai::neat::Model::benchmark()` and writes the results to JSON.
 
-CMake finds `SimaNeat` and links `SimaNeat::sima_neat`. The launcher copies
-the public development files from the DevKit. It then cross-compiles the
+CMake finds `SimaNeat` and links `SimaNeat::sima_neat`. The build uses the
+Neat headers and libraries in the SDK sysroot. It cross-compiles the
 application with the SDK ARM64 toolchain. The build stops if the executable is
 not AArch64.
 
@@ -67,9 +67,10 @@ items on the DevKit:
 
 Build ID B1859 is recommended for this preview.
 
-To build a bundled image, pair the SDK with a DevKit that has the required Neat
-version. The launcher copies the Neat files to
-`build/bundled-runtime/`. Git ignores this directory.
+Install the required Neat version in the SDK before you build a bundled image.
+`prepare-build.sh` copies the runtime files from the SDK sysroot to
+`build/bundled-runtime/`. It extracts `pyneat` from the wheel that the Neat
+installer cached in the SDK. Git ignores the build directory.
 
 At startup, the wrapper checks the source of the Neat files:
 

@@ -69,6 +69,63 @@ export RUNTIME_MODE=bundled
 Do not change `RUNTIME_MODE` until you finish the test. Thin mode and bundled
 mode use different image, container, and report names.
 
+## Use the prebuilt bundled images
+
+GitHub Actions builds the bundled images on an ARM64 runner. Each successful
+build publishes these moving tags:
+
+```text
+ghcr.io/paconsultings/neat-yolo26-python-bundled:develop
+ghcr.io/paconsultings/neat-yolo26-cpp-bundled:develop
+```
+
+It also publishes an immutable `sha-<commit>` tag for each image. Use an
+immutable tag when you need to repeat a test with the same image.
+
+To pull the images directly on the DevKit, run:
+
+```bash
+dk shell
+docker pull ghcr.io/paconsultings/neat-yolo26-python-bundled:develop
+docker pull ghcr.io/paconsultings/neat-yolo26-cpp-bundled:develop
+exit
+```
+
+To use the prebuilt images, run these commands in the SDK shell:
+
+```bash
+export RUNTIME_MODE=bundled
+export PYTHON_IMAGE=ghcr.io/paconsultings/neat-yolo26-python-bundled:develop
+export CPP_IMAGE=ghcr.io/paconsultings/neat-yolo26-cpp-bundled:develop
+
+./run-devkit.sh run both
+./run-devkit.sh wait both
+./run-devkit.sh logs both
+```
+
+The DevKit pulls the images directly from GitHub Container Registry. Public
+packages do not require a registry login. If GitHub reports `denied`, ask the
+repository owner to confirm that both packages are public.
+
+> [!IMPORTANT]
+> SiMa software distribution terms apply to the Neat files in these images.
+> A repository owner must confirm redistribution permission before making the
+> packages public.
+
+The publishing workflow runs after relevant application or container files
+change on `main`. A repository maintainer can also start it with
+`workflow_dispatch`. The workflow does these operations:
+
+1. Uses the `ubuntu-24.04-arm` GitHub-hosted runner.
+2. Installs or verifies Docker on the runner.
+3. Installs sima-cli from the `develop` branch.
+4. Installs the `develop` SDK without a DevKit connection.
+5. Installs minimal Neat Core in the SDK.
+6. Stages Neat from the SDK sysroot.
+7. Builds and publishes both images to GitHub Container Registry.
+
+The workflow does not use a DevKit or copy files over SSH.
+
 ## Build and push the images
 
 Build the Python and C++ images:
@@ -87,11 +144,13 @@ To build only one image, run one of these commands:
 The Python build adds `main.py` to the image. The C++ build does these
 operations:
 
-1. Copies the public Neat development files from the DevKit.
+1. Reads the public Neat development files from the SDK sysroot.
 2. Cross-compiles `main.cpp`.
 3. Checks that the executable is ARM64.
 
-Bundled mode also copies Neat runtime files and plug-ins from the DevKit.
+Bundled mode copies Neat runtime files and plug-ins from the SDK sysroot. It
+extracts `pyneat` from the wheel cached by the SDK installation. It does not
+copy Neat from the DevKit.
 
 Buildx uses `--platform linux/arm64` and `--push`. It pushes the images to
 `SIMA_CONTAINER_REGISTRY`. The DevKit then pulls the images from this
@@ -497,15 +556,15 @@ exit
 
 Use eLxr 3.0.0. Build ID B1859 is recommended.
 
-### A bundled build cannot copy Neat
+### A bundled build cannot find Neat
 
-The paired DevKit must contain compatible installations of these packages:
+Install the minimal Neat package in the SDK:
 
-- `sima-neat`
-- `sima-neat-dev`
-- `neat-runtime`
-- `neat-gst-plugins`
-- `sima-lmm-core`
-- `pyneat`
+```bash
+sudo apt update
+sima-cli neat install core@develop -t minimal
+```
 
-Use a DevKit that has the Neat version that you want to package.
+The installer puts the libraries and headers in the SDK sysroot. It also
+caches the Debian packages and the `pyneat` wheel under
+`${SYSROOT}/neat-install-packages`. The bundled build uses these files.

@@ -127,10 +127,10 @@ DevKit connected to the Internet during this installation.
 
 ## Install Neat on the DevKit
 
-Thin images use the Neat installation on the DevKit. Bundled builds also copy
-Neat user-space files from the DevKit.
+Thin images use the Neat installation on the DevKit. Bundled images use the
+Neat files that were installed in the SDK and added to the image.
 
-Install Neat Core from the `develop` branch:
+If you plan to test thin images, install Neat Core from the `develop` branch:
 
 ```bash
 dk shell
@@ -140,7 +140,8 @@ exit
 ```
 
 Run `sudo apt update` immediately before the Neat installation. The DevKit
-must have network access for this step.
+must have network access for this step. You can skip this installation when
+you test only bundled images.
 
 ## Check the DevKit
 
