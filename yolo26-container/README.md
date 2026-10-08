@@ -20,10 +20,11 @@ Modalix DevKit:
 
 ## Quick start with a prebuilt container image
 
-This sample project uses a CI/CD workflow to build the bundled ARM64 container
-images automatically. The workflow runs on an ARM64 GitHub-hosted runner and
-publishes the images to GitHub Container Registry (GHCR). The `develop` tag
-points to the latest successful build from the `main` branch.
+This sample project uses a [CI/CD workflow](../.github/workflows/yolo26-bundled-images.yml)
+to build the bundled ARM64 container images automatically. The workflow runs
+on an ARM64 GitHub-hosted runner and publishes the images to GitHub Container
+Registry (GHCR). The `develop` tag points to the latest successful build from
+the `main` branch.
 
 This quick start uses the prebuilt Python image. You do not have to build the
 application, install the Neat SDK, or install Neat Core before you run it.
