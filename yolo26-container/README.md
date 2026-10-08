@@ -113,22 +113,26 @@ and build the images. Read these guides in order:
 2. [Understand the application design](docs/02-application-design.md)
 3. [Build and run the containers](docs/03-build-and-run.md)
 
-### Run with the example script after setup
+### Build and run with the example script
 
-The example script can download a missing model, deploy one or both images,
-and retain the containers for inspection. Run it from the SDK shell:
+The example script builds the images and pushes them to the local registry
+configured by the SDK. It can then download a missing model, deploy one or
+both images, and retain the containers for inspection. Run it from the SDK
+shell:
 
 ```bash
 cd /workspace/neat-examples/yolo26-container
 
 export RUNTIME_MODE=bundled
-export PYTHON_IMAGE=ghcr.io/paconsultings/neat-yolo26-python-bundled:develop
-export CPP_IMAGE=ghcr.io/paconsultings/neat-yolo26-cpp-bundled:develop
 
+./run-devkit.sh build both
 ./run-devkit.sh run both
 ./run-devkit.sh wait both
 ./run-devkit.sh logs both
 ```
+
+The script supplies the default image names. Set `PYTHON_IMAGE` or `CPP_IMAGE`
+only when you want to use different names.
 
 If the YOLO26 ModelPack is not present, the `run` action downloads it with
 `sima-cli`.
