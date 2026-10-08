@@ -28,9 +28,98 @@ For the first test, read these guides in order:
 2. [Understand the application design](docs/02-application-design.md)
 3. [Build and run the containers](docs/03-build-and-run.md)
 
-## Quick start
+## Quick start with a prebuilt container image
 
-Complete the setup guide first. Then, use the prebuilt bundled images:
+This sample project uses a CI/CD workflow to build the bundled ARM64 container
+images automatically. The workflow runs on an ARM64 GitHub-hosted runner and
+publishes the images to GitHub Container Registry (GHCR). The `develop` tag
+points to the latest successful build from the `main` branch.
+
+This quick start uses the prebuilt Python image. You do not have to build the
+application or the image before you run it.
+
+Complete the setup guide first. The repository must be available at
+`/workspace/neat-examples` in the SDK and on the DevKit.
+
+### Download the model
+
+Run these commands in the SDK shell. The setup guide installs `sima-cli`. You
+must have a valid SiMa Developer Portal account to download the model.
+
+```bash
+command -v sima-cli
+
+export PROJECT_DIR=/workspace/neat-examples/yolo26-container
+mkdir -p "${PROJECT_DIR}/models"
+
+sima-cli download --dest "${PROJECT_DIR}/models" \
+  https://docs.sima.ai/pkg_downloads/SDK2.1.3/models/modalix/yolo26-detection/yolo26m-det-int8-b1.tar.gz
+
+test -f "${PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz"
+```
+
+### Pull and run the prebuilt Python image
+
+Open a DevKit shell:
+
+```bash
+dk shell
+```
+
+Then, run these commands on the DevKit:
+
+```bash
+export PROJECT_DIR=/workspace/neat-examples/yolo26-container
+export IMAGE=ghcr.io/paconsultings/neat-yolo26-python-bundled:develop
+
+mkdir -p "${PROJECT_DIR}/out"
+docker pull "${IMAGE}"
+
+docker run --name neat-yolo26-python-bundled \
+  --network host \
+  --ipc host \
+  --device /dev/dma_heap/linux,cma:/dev/dma_heap/linux,cma \
+  --device /dev/mla:/dev/mla \
+  --device /dev/cvu:/dev/cvu \
+  --security-opt systempaths=unconfined \
+  --security-opt seccomp=unconfined \
+  --volume /bin:/bin:ro \
+  --volume /sbin:/sbin:ro \
+  --volume /usr:/usr:ro \
+  --volume /etc:/etc:ro \
+  --volume /opt:/opt:ro \
+  --volume /lib:/lib:ro \
+  --volume /media/nvme:/media/nvme \
+  --volume /workspace:/workspace \
+  --tmpfs /tmp:rw,exec,nosuid,size=512m,mode=1777 \
+  --env HOME=/tmp \
+  --env XDG_CACHE_HOME=/tmp/.cache \
+  "${IMAGE}" \
+  --model "${PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz" \
+  --frames 3000 \
+  --decode-type yolo26-det \
+  --output-json "${PROJECT_DIR}/out/python-bundled.json"
+```
+
+The container remains on the DevKit after it stops. Remove it before you run
+the same command again:
+
+```bash
+docker rm neat-yolo26-python-bundled
+```
+
+If the package is private, sign in to GHCR before you pull it. Use a GitHub
+token that has permission to read the package:
+
+```bash
+printf '%s' "${GITHUB_TOKEN}" | \
+  docker login ghcr.io --username YOUR_GITHUB_USER --password-stdin
+```
+
+### Run with the example script
+
+The example script can download a missing model, deploy one or both images,
+and retain the containers for inspection. Run it from the SDK shell:
 
 ```bash
 cd /workspace/neat-examples/yolo26-container
@@ -45,7 +134,7 @@ export CPP_IMAGE=ghcr.io/paconsultings/neat-yolo26-cpp-bundled:develop
 ```
 
 If the YOLO26 ModelPack is not present, the `run` action downloads it with
-sima-cli. You must have access to the model in the SiMa Developer Portal.
+`sima-cli`.
 
 The script keeps completed containers. Remove them when the test is complete:
 
