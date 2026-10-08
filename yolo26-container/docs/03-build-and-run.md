@@ -194,23 +194,29 @@ does not remove images, the ModelPack, or JSON reports.
 ### `dk is unavailable`
 
 The command is running outside the paired SDK shell, or SDK setup did not
-finish. On the host, run setup again and open a new SDK shell:
+finish. On the host, reinstall and set up the develop SDK, enter the DevKit IP
+when prompted, and open the SDK shell:
 
 ```bash
-sima-cli sdk setup --devkit <devkit-ip> --workspace ~/sima-neat
+sima-cli neat install sdk@develop
 sima-cli sdk neat
 ```
 
 ### `SIMA_CONTAINER_REGISTRY is unset`
 
-Repeat SDK setup without `--no-container-registry`, then enter a new SDK shell.
+Run `sima-cli neat install sdk@develop` again, enable the local registry during
+setup, enter the DevKit IP when prompted, and then open a new SDK shell.
 
 ### The repository is not under `/workspace`
 
-Repeat setup with `--workspace` pointing to the parent of `neat-examples`:
+Clone or move the repository under the default host workspace, then re-enter
+the SDK shell:
 
 ```bash
-sima-cli sdk setup --devkit <devkit-ip> --workspace ~/sima-neat
+mkdir -p ~/workspace
+cd ~/workspace
+git clone https://github.com/paconsultings/neat-examples.git
+sima-cli sdk neat
 ```
 
 ### The model download fails or redirects repeatedly

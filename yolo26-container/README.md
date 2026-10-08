@@ -16,6 +16,14 @@ or update to the required build from the `develop` branch with:
 sima-cli selfupdate --prod --branch develop
 ```
 
+Install and set up the matching SDK from the `develop` branch with:
+
+```bash
+sima-cli neat install sdk@develop
+```
+
+Enter the DevKit IP address when prompted.
+
 This example builds and runs the same YOLO26 Neat benchmark as two independent
 ARM64 containers on a Modalix DevKit:
 

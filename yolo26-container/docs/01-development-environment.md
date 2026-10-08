@@ -39,46 +39,42 @@ longer need the preview features.
 Docker socket access gives the SDK shell control of the host Docker engine.
 Use this workflow only on a trusted development host.
 
+## Install and set up the develop SDK
+
+Run the installer on the development host:
+
+```bash
+sima-cli neat install sdk@develop
+```
+
+Enter the DevKit IP address when prompted. The command installs the SDK build
+from the `develop` branch and runs its setup flow. The setup checks Docker and
+Buildx on the host, configures SDK-to-DevKit access, and offers to start a local
+container registry. The default registry port is `5050`; setup chooses another
+available port when necessary. Enable the registry because the DevKit must pull
+the images built by this example.
+
+On macOS, setup also checks Colima networking. A Colima profile created without
+the required shared or bridged network configuration may need to be recreated.
+Back up important Colima data before approving any profile recreation prompt.
+
 ## Clone the examples into the SDK workspace
 
 The following layout makes the repository available as
 `/workspace/neat-examples` inside the SDK and on the paired DevKit:
 
 ```bash
-mkdir -p ~/sima-neat
-cd ~/sima-neat
+mkdir -p ~/workspace
+cd ~/workspace
 git clone https://github.com/paconsultings/neat-examples.git
 ```
 
 If the repository already exists, update it instead:
 
 ```bash
-cd ~/sima-neat/neat-examples
+cd ~/workspace/neat-examples
 git pull --ff-only
 ```
-
-## Pair the SDK with the DevKit
-
-Run setup on the development host, replacing `<devkit-ip>` with the DevKit IP:
-
-```bash
-sima-cli sdk setup \
-  --devkit <devkit-ip> \
-  --workspace ~/sima-neat
-```
-
-When setup asks you to choose an SDK image, select a build produced from the
-Neat SDK `develop` branch. Do not use a stable SDK image for this preview.
-
-Setup checks Docker and Buildx on the host, configures SDK-to-DevKit access,
-and offers to start a local container registry. The default registry port is
-`5050`; setup chooses another available port when necessary. Do not pass
-`--no-container-registry`, because the DevKit must pull the images built by
-this example.
-
-On macOS, setup also checks Colima networking. A Colima profile created without
-the required shared or bridged network configuration may need to be recreated.
-Back up important Colima data before approving any profile recreation prompt.
 
 Enter the SDK shell:
 
@@ -107,13 +103,14 @@ The final command confirms that the repository is inside the shared workspace.
 The C++ build produced later must be ARM64, even when the development host is
 AMD64.
 
-If `dk` or `SIMA_CONTAINER_REGISTRY` is missing, leave the SDK shell, repeat
-`sima-cli sdk setup`, and open a new SDK shell.
+If `dk` or `SIMA_CONTAINER_REGISTRY` is missing, leave the SDK shell, run
+`sima-cli neat install sdk@develop` again, enter the DevKit IP when prompted,
+and open a new SDK shell.
 
 ## Prepare Docker on the DevKit
 
-Setup configures the SDK side, but it does not silently install Docker on the
-DevKit. From the SDK shell, run:
+The SDK installer configures the SDK side, but it does not silently install
+Docker on the DevKit. From the SDK shell, run:
 
 ```bash
 dk container setup
@@ -157,13 +154,14 @@ these devices into the application containers; it does not use
 
 ## Registry and network behavior
 
-The local development registry uses HTTP without authentication. SDK setup
-limits it to local and DevKit-facing network paths, but it is still intended
-only for a trusted development network.
+The local development registry uses HTTP without authentication. The SDK
+setup flow limits it to local and DevKit-facing network paths, but it is still
+intended only for a trusted development network.
 
 If the DevKit cannot pull an image, verify that the host, the Docker or Colima
-VM, and the DevKit have a reachable network path. Re-running SDK setup repairs
-the stored registry address when the host network changes.
+VM, and the DevKit have a reachable network path. Re-running
+`sima-cli neat install sdk@develop` and entering the DevKit IP again repairs
+the SDK-to-DevKit setup when the host network changes.
 
 ## Next step
 
