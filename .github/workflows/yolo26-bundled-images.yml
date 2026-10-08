@@ -61,9 +61,18 @@ jobs:
           set -euo pipefail
           install_dir="${RUNNER_TEMP}/neat-sdk-install"
           mkdir -p "${install_dir}"
-          sima-cli neat install sdk@develop \
-            --download-only \
-            --install-dir "${install_dir}"
+          for attempt in 1 2 3; do
+            if sima-cli neat install sdk@develop \
+              --download-only \
+              --install-dir "${install_dir}"; then
+              break
+            fi
+            if [[ "${attempt}" -eq 3 ]]; then
+              echo "SDK installation failed after ${attempt} attempts." >&2
+              exit 1
+            fi
+            sleep 10
+          done
           sima-cli sdk setup \
             --minimal \
             --noninteractive \
@@ -88,8 +97,17 @@ jobs:
           docker exec "${sdk_container}" bash -lc '
             set -euo pipefail
             sudo apt update
-            NEAT_INSTALLER_SKIP_DEVKIT_SYNC=ON \
-              sima-cli neat install core@develop -t minimal
+            for attempt in 1 2 3; do
+              if NEAT_INSTALLER_SKIP_DEVKIT_SYNC=ON \
+                sima-cli neat install core@develop -t minimal; then
+                break
+              fi
+              if [[ "${attempt}" -eq 3 ]]; then
+                echo "Neat installation failed after ${attempt} attempts." >&2
+                exit 1
+              fi
+              sleep 10
+            done
             cd /workspace/yolo26-container
             ./prepare-build.sh --bundled both
           '
