@@ -100,6 +100,19 @@ All commands must succeed.
 If `dk` or `SIMA_CONTAINER_REGISTRY` is not available, leave the SDK shell.
 Run the SDK installation again. Then, open a new SDK shell.
 
+## Install Neat in the SDK
+
+The preview Neat SDK does not include the Neat Core libraries. Install the
+minimal Neat Core package in the SDK shell:
+
+```bash
+sudo apt update
+sima-cli neat install core@develop -t minimal
+```
+
+Run `sudo apt update` immediately before the Neat installation. The SDK
+environment must have network access for this step.
+
 ## Check Docker on the DevKit
 
 You do not need to install Docker on the DevKit manually. Run:
@@ -122,7 +135,7 @@ Install Neat Core from the `develop` branch:
 ```bash
 dk shell
 sudo apt update
-sima-cli neat install core@develop
+sima-cli neat install core@develop -t minimal
 exit
 ```
 
