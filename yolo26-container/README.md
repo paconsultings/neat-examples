@@ -8,8 +8,9 @@
 [![Bundled images](https://github.com/paconsultings/neat-examples/actions/workflows/yolo26-bundled-images.yml/badge.svg)](https://github.com/paconsultings/neat-examples/actions/workflows/yolo26-bundled-images.yml)
 
 > [!IMPORTANT]
-> This example is a preview. Use eLxr 3.0.0, sima-cli 2.1.19, and a Neat SDK
-> build from the `develop` branch. The recommended eLxr build ID is B1859.
+> This example is a preview. The prebuilt image requires eLxr 3.0.0 and
+> sima-cli 2.1.19. Building an image also requires a Neat SDK build from the
+> `develop` branch. The recommended eLxr build ID is B1859.
 
 This example runs the same YOLO26 benchmark in two ARM64 containers on a
 Modalix DevKit:
@@ -20,14 +21,6 @@ Modalix DevKit:
 You can run one application or both applications. You can also select a thin
 image or a bundled image.
 
-## Read the guides
-
-For the first test, read these guides in order:
-
-1. [Set up the development environment](docs/01-development-environment.md)
-2. [Understand the application design](docs/02-application-design.md)
-3. [Build and run the containers](docs/03-build-and-run.md)
-
 ## Quick start with a prebuilt container image
 
 This sample project uses a CI/CD workflow to build the bundled ARM64 container
@@ -36,18 +29,25 @@ publishes the images to GitHub Container Registry (GHCR). The `develop` tag
 points to the latest successful build from the `main` branch.
 
 This quick start uses the prebuilt Python image. You do not have to build the
-application or the image before you run it.
+application, install the Neat SDK, or install Neat Core before you run it.
 
-Complete the setup guide first. The repository must be available at
-`/workspace/neat-examples` in the SDK and on the DevKit.
+The DevKit must have Docker and sima-cli 2.1.19. The repository must be
+available at `/workspace/neat-examples` on the DevKit.
+
+From the development host, connect directly to the DevKit. Replace
+`DEVKIT_IP` with the DevKit IP address:
+
+```bash
+ssh sima@DEVKIT_IP
+```
 
 ### Download the model
 
-Run these commands in the SDK shell. The setup guide installs `sima-cli`. You
-must have a valid SiMa Developer Portal account to download the model.
+Run these commands on the DevKit. You must have a valid SiMa Developer Portal
+account to download the model.
 
 ```bash
-command -v sima-cli
+sima-cli --version
 
 export PROJECT_DIR=/workspace/neat-examples/yolo26-container
 mkdir -p "${PROJECT_DIR}/models"
@@ -60,14 +60,15 @@ test -f "${PROJECT_DIR}/models/yolo26m-det-int8-b1.tar.gz"
 
 ### Pull and run the prebuilt Python image
 
-From the development host, connect directly to the DevKit. Replace
-`DEVKIT_IP` with the DevKit IP address:
+If the package is private, sign in to GHCR first. Use a GitHub token that has
+permission to read the package:
 
 ```bash
-ssh sima@DEVKIT_IP
+printf '%s' "${GITHUB_TOKEN}" | \
+  docker login ghcr.io --username YOUR_GITHUB_USER --password-stdin
 ```
 
-Then, run these commands on the DevKit:
+Then, pull and run the image:
 
 ```bash
 export PROJECT_DIR=/workspace/neat-examples/yolo26-container
@@ -109,15 +110,16 @@ the same command again:
 docker rm neat-yolo26-python-bundled
 ```
 
-If the package is private, sign in to GHCR before you pull it. Use a GitHub
-token that has permission to read the package:
+## Build your own container images
 
-```bash
-printf '%s' "${GITHUB_TOKEN}" | \
-  docker login ghcr.io --username YOUR_GITHUB_USER --password-stdin
-```
+After the prebuilt image runs successfully, set up the development environment
+and build the images. Read these guides in order:
 
-### Run with the example script
+1. [Set up the development environment](docs/01-development-environment.md)
+2. [Understand the application design](docs/02-application-design.md)
+3. [Build and run the containers](docs/03-build-and-run.md)
+
+### Run with the example script after setup
 
 The example script can download a missing model, deploy one or both images,
 and retain the containers for inspection. Run it from the SDK shell:
