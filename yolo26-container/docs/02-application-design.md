@@ -1,82 +1,90 @@
-# 2. Understand the application and container design
+# 2. Understand the application design
 
-This example exercises the same compiled YOLO26 ModelPack through public Neat
-APIs in Python and C++. It deliberately keeps the applications small so the
-container, cross-build, runtime, and concurrency behavior remain visible.
+This example runs the same YOLO26 ModelPack with the public Neat APIs for
+Python and C++. The applications are small so that you can examine the build
+and container behavior.
 
-## End-to-end flow
+## Test sequence
 
-1. `run-devkit.sh build` creates one or both `linux/arm64` images.
-2. Buildx pushes the images to `SIMA_CONTAINER_REGISTRY`.
-3. `run-devkit.sh run` asks the DevKit to pull and start the selected images.
-4. Each application benchmarks synthetic input through the YOLO26 model.
-5. Each application writes a JSON report into the shared `out/` directory.
-6. `run-devkit.sh wait both` checks both exit codes and proves their execution
-   intervals overlapped.
+The test has these steps:
 
-The overlap check is a functional concurrency test. It is not a performance
-comparison because both processes share one MLA device.
+1. `run-devkit.sh build` builds one or two `linux/arm64` images.
+2. Docker Buildx pushes the images to `SIMA_CONTAINER_REGISTRY`.
+3. `run-devkit.sh run` makes the DevKit pull and start the images.
+4. Each application runs the YOLO26 benchmark with synthetic input.
+5. Each application writes a JSON report to the shared `out/` directory.
+6. `run-devkit.sh wait both` checks the exit codes and execution times.
+
+The last step checks that both containers ran at the same time. It does not
+compare performance. Both applications use the same MLA device.
 
 ## Python application
 
-`main.py` imports public `pyneat`, configures `ModelOptions` for YOLO26 object
-detection, loads the ModelPack, and calls `Model.benchmark()`. It records:
+`main.py` uses the public `pyneat` API. It does these operations:
 
-- the selected Python and `pyneat` paths;
-- the model and decode configuration;
-- logical and physical output information when available; and
-- latency, throughput, power, and energy fields returned by Neat.
+1. Sets the YOLO26 object-detection options.
+2. Loads the ModelPack.
+3. Calls `Model.benchmark()`.
+4. Writes the benchmark data to a JSON report.
 
-The thin Python image contains only `main.py` and starts it with the DevKit's
-`/media/nvme/pyneat` Python environment. The bundled Python image includes the
-matching `pyneat` package under `/app/runtime/python` and verifies that this
-copy is selected before the application starts.
+The report includes the Python and `pyneat` paths, model configuration, output
+information, latency, throughput, power, and energy.
+
+The thin image starts the application with the DevKit Python environment at
+`/media/nvme/pyneat`. The bundled image uses the `pyneat` package in
+`/app/runtime/python`.
 
 ## C++ application
 
-`main.cpp` uses C++20 and the public `<neat.h>` API. It applies the same YOLO26
-decode configuration, calls `simaai::neat::Model::benchmark()`, and writes a
-JSON report with the same primary metrics as the Python implementation.
+`main.cpp` uses C++20 and the public `<neat.h>` API. It uses the same model
+configuration as the Python application. It calls
+`simaai::neat::Model::benchmark()` and writes the results to JSON.
 
-The build uses `find_package(SimaNeat REQUIRED)` and links
-`SimaNeat::sima_neat`. `run-devkit.sh` stages the matching public development
-files from the paired DevKit, cross-compiles with the SDK ARM64 toolchain, and
-checks that the result is an AArch64 executable before building the image.
+CMake finds `SimaNeat` and links `SimaNeat::sima_neat`. The launcher copies
+the public development files from the DevKit. It then cross-compiles the
+application with the SDK ARM64 toolchain. The build stops if the executable is
+not AArch64.
 
-## Thin and bundled images
+## Image types
 
-| Property | Thin image | Bundled-Neat image |
+| Item | Thin image | Bundled image |
 | --- | --- | --- |
-| Application code | Included | Included |
-| Neat shared libraries and plugins | Supplied by target | Included under `/app/runtime` |
-| `pyneat` for Python | Supplied by target | Included under `/app/runtime/python` |
-| Platform OS and GStreamer libraries | Supplied by target | Supplied by target |
-| MLA-RT, kernel drivers, and devices | Supplied by target | Supplied by target |
-| Typical use | Small image on a prepared DevKit | Portable Neat user space on a compatible platform |
+| Application | Included | Included |
+| Neat libraries and plug-ins | From the DevKit | In `/app/runtime` |
+| Python `pyneat` package | From the DevKit | In `/app/runtime/python` |
+| eLxr and GStreamer libraries | From the DevKit | From the DevKit |
+| MLA runtime, drivers, and devices | From the DevKit | From the DevKit |
+| Use | Small image for a prepared DevKit | Image with Neat user space |
 
-The bundled image is not a complete DevKit root filesystem. It still requires
-eLxr 3.0.0 on Modalix, Python 3.13 for the Python target, compatible platform
-libraries, MLA-RT, kernel drivers, and SiMa device nodes. Build ID B1859 is the
-recommended eLxr 3.0.0 build for this preview.
+A bundled image is not a complete DevKit file system. It still requires these
+items on the DevKit:
 
-Building a bundled image requires a paired source DevKit containing the Neat
-version to package. The script copies the relevant user-space files into the
-ignored `build/bundled-runtime/` directory and then into the image. At startup:
+- eLxr 3.0.0 on Modalix
+- compatible platform libraries
+- MLA runtime
+- kernel drivers and SiMa device nodes
+- Python 3.13 for the Python application
+
+Build ID B1859 is recommended for this preview.
+
+To build a bundled image, pair the SDK with a DevKit that has the required Neat
+version. The launcher copies the Neat files to
+`build/bundled-runtime/`. Git ignores this directory.
+
+At startup, the wrapper checks the source of the Neat files:
 
 - Python must load `pyneat` from `/app/runtime/python`.
 - C++ must load `libsima_neat.so.6` from `/app/runtime/rootfs`.
 
-The startup wrapper fails if either application silently resolves Neat from
-the target instead.
+The container stops if it loads these files from the DevKit installation.
 
-Bundled SiMa files remain subject to SiMa software distribution terms. Confirm
-that you are authorized to redistribute them before publishing an image beyond
-the approved development registry.
+> [!IMPORTANT]
+> SiMa software distribution terms apply to the files in a bundled image.
+> Before you publish an image, confirm that you can redistribute these files.
 
 ## DevKit runtime contract
 
-The launcher does not use Docker privileged mode. It maps the three devices
-required by this workload:
+The launcher maps these device files:
 
 ```text
 /dev/dma_heap/linux,cma
@@ -84,42 +92,62 @@ required by this workload:
 /dev/cvu
 ```
 
-The current eLxr/MLA runtime limitations tracked by SWMLA-10052 also require:
+The launcher does not use `--privileged`.
+
+The eLxr and MLA limitations in SWMLA-10052 require these temporary options:
 
 ```text
 --security-opt systempaths=unconfined
 --security-opt seccomp=unconfined
 ```
 
-The launcher mounts `/bin`, `/sbin`, `/usr`, `/etc`, `/opt`, `/lib`,
-`/media/nvme`, and `/workspace` from the DevKit. A writable, executable `/tmp`
-is provided separately. The system mounts supply platform libraries and tools;
-bundled Neat files remain under `/app/runtime` so the mounts do not hide them.
+The launcher mounts these DevKit directories:
 
-This remains a broad development-time runtime contract. The explicit device
-list is narrower than `--privileged`, but the system mounts and unconfined
-security options are not a production isolation boundary.
+```text
+/bin
+/sbin
+/usr
+/etc
+/opt
+/lib
+/media/nvme
+/workspace
+```
+
+It also provides a writable and executable `/tmp`. The mounts supply platform
+libraries and tools. They do not hide the bundled Neat files in
+`/app/runtime`.
+
+This configuration is for development tests. The explicit device list is more
+limited than `--privileged`. However, the system mounts and unconfined
+security options do not provide a production isolation boundary.
 
 ## Model and reports
 
-Both applications use:
+Both applications use this ModelPack:
 
 ```text
 models/yolo26m-det-int8-b1.tar.gz
 ```
 
-When the archive is missing, `run-devkit.sh run` uses `sima-cli` to retrieve it
-from the SiMa Developer Portal. The user must have a valid Developer Portal
-account with access to the model and an authenticated `sima-cli` session. Run
-`sima-cli login` before starting the example if authentication has not already
-been configured.
+If this file is not present, `run-devkit.sh run` downloads it from the SiMa
+Developer Portal. You need:
 
-The downloaded model is ignored by Git. With the default thin mode, reports
-are written to `out/python.json` and `out/cpp.json`. Bundled mode uses
+- a valid Developer Portal account
+- access to the model
+- an authenticated sima-cli session
+
+If necessary, run:
+
+```bash
+sima-cli login
+```
+
+Git ignores the downloaded model. The default thin mode writes
+`out/python.json` and `out/cpp.json`. Bundled mode writes
 `out/python-bundled.json` and `out/cpp-bundled.json`.
 
-Models, reports, staged runtime files, cross-build output, and container layers
-must not be committed to this repository.
+Do not commit models, reports, runtime files, build output, or container layers.
 
 ## Next step
 

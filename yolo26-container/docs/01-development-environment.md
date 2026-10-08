@@ -1,67 +1,61 @@
 # 1. Set up the development environment
 
-This guide prepares a development host, a Neat SDK shell, and one Modalix
-DevKit for the YOLO26 container example.
+This guide prepares the development host, the Neat SDK shell, and one Modalix
+DevKit.
 
-## Required versions
+## Requirements
 
 | Component | Requirement |
 | --- | --- |
-| DevKit platform | eLxr 3.0.0 on Modalix; build ID B1859 recommended |
+| DevKit | Modalix with eLxr 3.0.0 |
+| Recommended eLxr build | B1859 |
 | sima-cli | 2.1.19 prerelease from the `develop` branch |
-| Neat SDK | Image built from the `develop` branch |
+| Neat SDK | Build from the `develop` branch |
 | Development host | Linux or macOS with Docker and Buildx |
 | macOS container runtime | Current Colima release |
 
-The host and DevKit must be able to reach each other. Record the DevKit IP
-address before setup. The DevKit user must have password-free `sudo` access.
-If Docker is not already installed on the DevKit, the DevKit also needs
-Internet access when the first `dk container` command installs it.
+The development host and the DevKit must have network access to each other.
+Record the DevKit IP address. The DevKit user must have password-free `sudo`
+access.
 
-## Install host prerequisites
+If Docker is not installed on the DevKit, the DevKit must have Internet access.
+The first `dk container` command installs Docker automatically.
 
-Install Docker on the development host. On macOS, install a current Colima
-release as the Docker runtime.
+## Update sima-cli
 
-At the time this guide was created, sima-cli 2.1.19 was a prerelease rather
-than the default production release. Install or update to it from the
-production artifact service's `develop` branch, then confirm the version:
+At the time of this document, sima-cli 2.1.19 is a prerelease. Install it from
+the `develop` branch:
 
 ```bash
 sima-cli selfupdate --prod --branch develop
 sima-cli --version
 ```
 
-The reported version must begin with `2.1.19`. This prerelease CLI is part of
-the preview workflow; return to the normal production channel when you no
-longer need the preview features.
+The version must start with `2.1.19`.
 
-Docker socket access gives the SDK shell control of the host Docker engine.
-Use this workflow only on a trusted development host.
+## Install the Neat SDK
 
-## Install and set up the develop SDK
-
-Run the installer on the development host:
+On the development host, run:
 
 ```bash
 sima-cli neat install sdk@develop
 ```
 
-Enter the DevKit IP address when prompted. The command installs the SDK build
-from the `develop` branch and runs its setup flow. The setup checks Docker and
-Buildx on the host, configures SDK-to-DevKit access, and offers to start a local
-container registry. The default registry port is `5050`; setup chooses another
-available port when necessary. Enable the registry because the DevKit must pull
-the images built by this example.
+Enter the DevKit IP address when the installer asks for it. Enable the local
+container registry when the installer asks. The default registry port is
+`5050`.
 
-On macOS, setup also checks Colima networking. A Colima profile created without
-the required shared or bridged network configuration may need to be recreated.
-Back up important Colima data before approving any profile recreation prompt.
+The installer checks Docker and Buildx on the development host. On macOS, it
+also checks the Colima network configuration. Back up important Colima data
+before you approve a request to recreate a Colima profile.
 
-## Clone the examples into the SDK workspace
+> [!CAUTION]
+> The SDK shell can control the Docker engine on the development host. Use a
+> trusted development host.
 
-The following layout makes the repository available as
-`/workspace/neat-examples` inside the SDK and on the paired DevKit:
+## Clone the examples
+
+Use this directory layout:
 
 ```bash
 mkdir -p ~/workspace
@@ -69,7 +63,7 @@ cd ~/workspace
 git clone https://github.com/paconsultings/neat-examples.git
 ```
 
-If the repository already exists, update it instead:
+If the repository is already present, update it:
 
 ```bash
 cd ~/workspace/neat-examples
@@ -82,9 +76,11 @@ Enter the SDK shell:
 sima-cli sdk neat
 ```
 
-## Verify the SDK shell
+The repository is now available at `/workspace/neat-examples`.
 
-Run these checks inside the SDK shell:
+## Check the SDK shell
+
+Run these commands in the SDK shell:
 
 ```bash
 type dk
@@ -99,35 +95,29 @@ printf 'Registry: %s\n' "${SIMA_CONTAINER_REGISTRY}"
 test -d /workspace/neat-examples/yolo26-container
 ```
 
-The final command confirms that the repository is inside the shared workspace.
-The C++ build produced later must be ARM64, even when the development host is
-AMD64.
+All commands must succeed.
 
-If `dk` or `SIMA_CONTAINER_REGISTRY` is missing, leave the SDK shell, run
-`sima-cli neat install sdk@develop` again, enter the DevKit IP when prompted,
-and open a new SDK shell.
+If `dk` or `SIMA_CONTAINER_REGISTRY` is not available, leave the SDK shell.
+Run the SDK installation again. Then, open a new SDK shell.
 
-## Docker on the DevKit
+## Check Docker on the DevKit
 
-You do not need to install Docker on the DevKit separately. If Docker is not
-already installed, the first `dk container` command installs and configures it
-on the DevKit automatically.
-
-Confirm that the container interface responds. Either command can trigger the
-automatic installation on a new DevKit:
+You do not need to install Docker on the DevKit manually. Run:
 
 ```bash
 dk container images
 dk container list
 ```
 
-## Install Neat from the develop branch on the DevKit
+If Docker is not present, `dk container` installs and configures it. Keep the
+DevKit connected to the Internet during this installation.
 
-The thin images use the Neat installation on the DevKit, and bundled builds
-stage their Neat user-space files from the paired DevKit. Install the current
-Neat Core `develop` build before building either image variant.
+## Install Neat on the DevKit
 
-Open a DevKit shell, refresh the apt package metadata, and then install Neat:
+Thin images use the Neat installation on the DevKit. Bundled builds also copy
+Neat user-space files from the DevKit.
+
+Install Neat Core from the `develop` branch:
 
 ```bash
 dk shell
@@ -136,43 +126,42 @@ sima-cli neat install core@develop
 exit
 ```
 
-Run `sudo apt update` immediately before the Neat installation so the installer
-resolves current package metadata. The DevKit needs network access for this
-step.
+Run `sudo apt update` immediately before the Neat installation. The DevKit
+must have network access for this step.
 
-## Verify the DevKit platform and devices
+## Check the DevKit
 
-Open a DevKit shell:
+Open a DevKit shell and run:
 
 ```bash
 dk shell
-```
-
-On the DevKit, confirm eLxr 3.0.0, Docker, and the accelerator devices. Build
-ID B1859 is recommended for this preview:
-
-```bash
 cat /etc/os-release
 docker version
 ls -l /dev/dma_heap/linux,cma /dev/mla /dev/cvu
 exit
 ```
 
-All three devices must exist for this YOLO26 workload. The launcher maps only
-these devices into the application containers; it does not use
-`--privileged`.
+Confirm that the DevKit uses eLxr 3.0.0. Build ID B1859 is recommended. Confirm
+that all three device files are present.
 
-## Registry and network behavior
+The launcher maps these device files into each container. The launcher does
+not use `--privileged`.
 
-The local development registry uses HTTP without authentication. The SDK
-setup flow limits it to local and DevKit-facing network paths, but it is still
-intended only for a trusted development network.
+## Registry security
 
-If the DevKit cannot pull an image, verify that the host, the Docker or Colima
-VM, and the DevKit have a reachable network path. Re-running
-`sima-cli neat install sdk@develop` and entering the DevKit IP again repairs
-the SDK-to-DevKit setup when the host network changes.
+The local registry uses HTTP without authentication. Use it only on a trusted
+development network.
+
+If the DevKit cannot pull an image, check the network path between these
+systems:
+
+1. the development host
+2. the Docker or Colima virtual machine
+3. the DevKit
+
+If the host network address changed, run `sima-cli neat install sdk@develop`
+again.
 
 ## Next step
 
-Continue with [Understand the application and container design](02-application-design.md).
+Continue with [Understand the application design](02-application-design.md).
