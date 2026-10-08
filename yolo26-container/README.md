@@ -84,7 +84,7 @@ This example is for development tests. It is not a production security
 configuration or a performance test.
 
 The launcher does not use `--privileged`. It maps only the required
-accelerator devices. It also uses temporary SWMLA-10052 security options and
+accelerator devices. It also uses temporary runtime security options and
 mounts system directories from the DevKit. Read the
 [runtime contract](docs/02-application-design.md#devkit-runtime-contract)
 before you change the launcher.

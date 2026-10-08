@@ -94,7 +94,7 @@ The launcher maps these device files:
 
 The launcher does not use `--privileged`.
 
-The eLxr and MLA limitations in SWMLA-10052 require these temporary options:
+The current eLxr and MLA runtime require these temporary options:
 
 ```text
 --security-opt systempaths=unconfined

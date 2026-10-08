@@ -284,7 +284,7 @@ launch() {
     exit 2
   fi
 
-  # SWMLA-10052 currently requires unmasked system paths and io_uring syscalls.
+  # The current runtime requires unmasked system paths and io_uring syscalls.
   # Expose only the accelerator devices used by this workload.
   dk container deploy "${image}" \
     --detach \
